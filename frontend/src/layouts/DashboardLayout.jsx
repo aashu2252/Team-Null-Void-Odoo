@@ -63,7 +63,7 @@ export default function DashboardLayout() {
     { name: 'Trips', path: '/dashboard/trips', icon: Route, requiredPermission: 'trip.view' },
     { name: 'Maintenance', path: '/dashboard/maintenance', icon: Wrench, requiredPermission: 'maintenance.view' },
     { name: 'Fuel & Expenses', path: '/dashboard/expenses', icon: Fuel, requiredPermission: 'expense.view' },
-    { name: 'Analytics', path: '/dashboard/reports', icon: FileBarChart, requiredPermission: 'dashboard.view' },
+    { name: 'Analytics', path: '/dashboard/reports', icon: FileBarChart, requiredPermission: 'analytics.view' },
     { name: 'Settings', path: '/dashboard/settings', icon: Settings, requiredPermission: '*' } // Only super admins for now or add a specific setting permission
   ];
 
