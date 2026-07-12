@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { useAuth } from '../context/AuthContext';
 import {
   TrendingUp,
   TrendingDown,
@@ -129,7 +128,6 @@ export default function Dashboard() {
   ];
 
   // ── Role-aware greeting ──────────────────────────────────────────────────
-  const { user } = useAuth();
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
