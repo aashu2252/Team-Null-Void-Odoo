@@ -8,7 +8,8 @@ const fuelLogSchema = new mongoose.Schema({
   },
   trip: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Trip'
+    ref: 'Trip',
+    required: [true, 'Trip reference is required']
   },
   liters: {
     type: Number,

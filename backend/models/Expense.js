@@ -3,11 +3,13 @@ const mongoose = require('mongoose');
 const expenseSchema = new mongoose.Schema({
   vehicle: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Vehicle'
+    ref: 'Vehicle',
+    required: [true, 'Vehicle reference is required']
   },
   trip: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Trip'
+    ref: 'Trip',
+    required: [true, 'Trip reference is required']
   },
   type: {
     type: String,
