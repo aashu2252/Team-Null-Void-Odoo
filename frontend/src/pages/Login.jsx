@@ -40,7 +40,8 @@ export default function Login() {
         user = response.data.data.user;
 
         // Validate returned role matches the selected role
-        if (user.role !== values.role) {
+        const userRoleName = (user.role && typeof user.role === 'object') ? user.role.name : user.role;
+        if (userRoleName !== values.role) {
           toast.error(`Unauthorized access. Authenticated user does not possess the requested '${values.role}' role.`, {
             style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
           });
