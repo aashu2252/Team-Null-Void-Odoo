@@ -21,7 +21,7 @@ const createDriver = async (req, res) => {
     if (!user) {
       const driverRole = await Role.findOne({ name: 'Driver' });
       if (!driverRole) return res.status(500).json({ success: false, message: 'Driver role not found' });
-      
+
       user = await User.create({
         firstName, lastName, email, mobile,
         profilePicture: profilePicture || '',

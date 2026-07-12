@@ -55,7 +55,7 @@ export default function Dashboard() {
   const [drivers, setDrivers] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
   const [fuelLogs, setFuelLogs] = useState([]);
-  
+
   const [selectedType, setSelectedType] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [selectedRegion, setSelectedRegion] = useState('All');
@@ -308,14 +308,13 @@ export default function Dashboard() {
   }, [filteredTrips]);
 
   // ── Role-aware greeting ──────────────────────────────────────────────────
-  const { user } = useAuth();
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     const salutation = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
 
     const name = user?.fullName || user?.name || 'Operator';
-    const role = user?.role || 'Operator';
+    const role = (typeof user?.role === 'object' ? user?.role?.name : user?.role) || 'Operator';
 
     const now = new Date();
     const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -409,7 +408,7 @@ export default function Dashboard() {
 
         {/* DRIVER ACTIVE TELEMETRY */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
+
           {/* Card 1: Active Trip Details */}
           <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
             <h3 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-4">
@@ -442,7 +441,7 @@ export default function Dashboard() {
                     <span>{activeTrip.progress || 50}%</span>
                   </div>
                   <div className="w-full bg-surface h-2 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-brand-primary rounded-full"
                       style={{ width: `${activeTrip.progress || 50}%` }}
                     />
@@ -545,9 +544,8 @@ export default function Dashboard() {
                         {t.actualDistance || t.plannedDistance} mi
                       </td>
                       <td className="py-3.5 text-center">
-                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                          t.status === 'Completed' ? 'bg-brand-success/10 text-brand-success border-brand-success/20' : 'bg-brand-danger/10 text-brand-danger border-brand-danger/20'
-                        }`}>
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${t.status === 'Completed' ? 'bg-brand-success/10 text-brand-success border-brand-success/20' : 'bg-brand-danger/10 text-brand-danger border-brand-danger/20'
+                          }`}>
                           {t.status}
                         </span>
                       </td>
@@ -625,13 +623,13 @@ export default function Dashboard() {
 
         {/* Safety Widgets */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
+
           {/* Widget 1: CDL Expiry Tracker */}
           <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
             <h3 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-4">
               Driver License Compliance Monitoring
             </h3>
-            
+
             <div className="space-y-3.5">
               {expiredDrivers.length === 0 && nearExpiryDrivers.length === 0 ? (
                 <div className="text-center py-8 text-xs text-txt-secondary">
@@ -679,7 +677,7 @@ export default function Dashboard() {
                       <span className="text-brand-success font-bold">{d.safetyScore}% Safety Score</span>
                     </div>
                     <div className="w-full bg-surface/50 rounded-full h-1.5">
-                      <div 
+                      <div
                         className="bg-brand-success h-1.5 rounded-full"
                         style={{ width: `${d.safetyScore}%` }}
                       />
@@ -853,7 +851,7 @@ export default function Dashboard() {
           <Truck className="w-4 h-4 text-brand-primary" />
           <span className="text-xs font-bold text-txt-primary uppercase tracking-wider">Fleet Telemetry Filter</span>
         </div>
-        
+
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end flex-wrap">
           <div>
             <select
