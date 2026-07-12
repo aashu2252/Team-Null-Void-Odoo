@@ -111,10 +111,10 @@ export default function Trips() {
 
   const [activeTripId, setActiveTripId] = useState('TRK-204');
   const [dispatchMode, setDispatchMode] = useState(false);
+  const [editingTrip, setEditingTrip] = useState(null);
 
-  // Backend refs for dropdowns
-  const [availableVehicles, setAvailableVehicles] = useState([]);
-  const [availableDrivers, setAvailableDrivers] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [drivers, setDrivers] = useState([]);
 
   const [newManifest, setNewManifest] = useState({
     vehicleId: '',
@@ -129,65 +129,109 @@ export default function Trips() {
     status: 'Draft'
   });
 
-  // Load trips + vehicle/driver refs from backend
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [tripsRes, vehiclesRes, driversRes] = await Promise.all([
-          api.get('/api/trips'),
-          api.get('/api/vehicles'),
-          api.get('/api/drivers')
-        ]);
+  const loadData = async () => {
+    try {
+      const [tripsRes, vehiclesRes, driversRes] = await Promise.all([
+        api.get('/api/trips?limit=1000'),
+        api.get('/api/vehicles?limit=1000'),
+        api.get('/api/drivers?limit=1000')
+      ]);
 
-        if (tripsRes.data?.success && tripsRes.data.data.length > 0) {
-          const mapped = tripsRes.data.data.map(t => ({
-            ...t,
-            id: t.id || t._id,
-            driver: t.driver?.name || t.driver || 'Unassigned',
-            vehicle: t.vehicle?.vehicleName || t.vehicle?.registrationNumber || t.vehicle || 'Unassigned',
-            stops: t.stops || [
-              { name: `${t.source} Terminal`, time: 'Dispatched', status: 'Active' },
-              { name: `${t.destination} Terminal`, time: 'Pending', status: 'Pending' }
-            ],
-            logs: t.logs || [{ text: 'Trip record loaded from database.', time: 'System' }],
-            progress: t.progress || (t.status === 'Completed' ? 100 : t.status === 'Dispatched' ? 50 : 0),
-            eta: t.eta || 'Scheduled'
-          }));
-          setTrips(mapped);
-          setActiveTripId(mapped[0]?.id);
+      if (tripsRes.data?.success) {
+        const tripsData = Array.isArray(tripsRes.data.data) ? tripsRes.data.data : tripsRes.data.data?.trips || [];
+        const mapped = tripsData.map(t => ({
+          ...t,
+          id: t.id || t._id,
+          driver: t.driver?.name || t.driver || 'Unassigned',
+          vehicle: t.vehicle?.vehicleName || t.vehicle?.registrationNumber || t.vehicle || 'Unassigned',
+          stops: t.stops || [
+            { name: `${t.source} Terminal`, time: 'Dispatched', status: 'Active' },
+            { name: `${t.destination} Terminal`, time: 'Pending', status: 'Pending' }
+          ],
+          logs: t.logs || [{ text: 'Trip record loaded from database.', time: 'System' }],
+          progress: t.progress || (t.status === 'Completed' ? 100 : t.status === 'Dispatched' ? 50 : 0),
+          eta: t.eta || 'Scheduled'
+        }));
+        setTrips(mapped);
+        if (mapped.length > 0 && !mapped.find(x => x.id === activeTripId)) {
+          setActiveTripId(mapped[0].id);
         }
-
-        if (vehiclesRes.data?.success) {
-          setAvailableVehicles(vehiclesRes.data.data.map(v => ({
-            _id: v._id,
-            label: `${v.vehicleName} (${v.registrationNumber})`
-          })));
-        }
-
-        if (driversRes.data?.success) {
-          setAvailableDrivers(driversRes.data.data.map(d => ({
-            _id: d._id,
-            label: d.name
-          })));
-        }
-      } catch (err) {
-        console.warn('Backend offline — retaining local trip manifests.');
       }
-    };
+
+      if (vehiclesRes.data?.success) {
+        const vehiclesData = Array.isArray(vehiclesRes.data.data) ? vehiclesRes.data.data : vehiclesRes.data.data?.vehicles || [];
+        setVehicles(vehiclesData);
+      }
+
+      if (driversRes.data?.success) {
+        const driversData = Array.isArray(driversRes.data.data) ? driversRes.data.data : driversRes.data.data?.drivers || [];
+        setDrivers(driversData);
+      }
+    } catch (err) {
+      console.warn('Backend offline — retaining local trip manifests.');
+    }
+  };
+
+  useEffect(() => {
     loadData();
   }, []);
+
+  const filteredVehiclesForDropdown = useMemo(() => {
+    const activeVehicleIds = new Set(
+      trips
+        .filter(t => (t.status === 'Dispatched' || t.status === 'Active') && (!editingTrip || t._id !== editingTrip._id))
+        .map(t => t.vehicle?._id || t.vehicle)
+    );
+
+    return vehicles.filter(v => {
+      if (editingTrip && (v._id === (editingTrip.vehicle?._id || editingTrip.vehicle))) {
+        return true;
+      }
+      return v.status === 'Available' && !activeVehicleIds.has(v._id);
+    }).map(v => ({
+      _id: v._id,
+      label: `${v.vehicleName} (${v.registrationNumber})`,
+      maxLoadCapacity: v.maxLoadCapacity
+    }));
+  }, [vehicles, trips, editingTrip]);
+
+  const availableVehicles = filteredVehiclesForDropdown;
+
+  const filteredDriversForDropdown = useMemo(() => {
+    const activeDriverIds = new Set(
+      trips
+        .filter(t => (t.status === 'Dispatched' || t.status === 'Active') && (!editingTrip || t._id !== editingTrip._id))
+        .map(t => t.driver?._id || t.driver)
+    );
+
+    return drivers.filter(d => {
+      if (editingTrip && (d._id === (editingTrip.driver?._id || editingTrip.driver))) {
+        return true;
+      }
+      const isExpired = d.licenseExpiryDate && new Date(d.licenseExpiryDate) < new Date();
+      return d.status === 'Available' && d.status !== 'Suspended' && !isExpired && !activeDriverIds.has(d._id);
+    }).map(d => ({
+      _id: d._id,
+      label: d.name
+    }));
+  }, [drivers, trips, editingTrip]);
+
+  const availableDrivers = filteredDriversForDropdown;
 
   const activeTrip = trips.find(t => t.id === activeTripId) || trips[0];
 
   const handleDispatchSubmit = async (e) => {
     e.preventDefault();
-    if (!newManifest.cargoWeight || !newManifest.source || !newManifest.destination || !newManifest.plannedDistance) {
-      toast.error('Please fill out all required dispatch details.');
+    if (!newManifest.cargoWeight || !newManifest.source || !newManifest.destination || !newManifest.plannedDistance || !newManifest.vehicleId || !newManifest.driverId) {
+      toast.error('Please fill out all required dispatch details including vehicle and driver.');
       return;
     }
 
-    const selectedVehicle = availableVehicles.find(v => v._id === newManifest.vehicleId);
-    const selectedDriver = availableDrivers.find(d => d._id === newManifest.driverId);
+    const selectedVehicle = vehicles.find(v => v._id === newManifest.vehicleId);
+    if (selectedVehicle && parseFloat(newManifest.cargoWeight) > selectedVehicle.maxLoadCapacity) {
+      toast.error(`Cargo weight (${newManifest.cargoWeight} lbs) exceeds vehicle maximum capacity (${selectedVehicle.maxLoadCapacity} lbs).`);
+      return;
+    }
 
     const payload = {
       source: newManifest.source,
@@ -202,56 +246,36 @@ export default function Trips() {
     };
 
     try {
-      const res = await api.post('/api/trips', payload);
-      if (res.data?.success) {
-        const saved = res.data.data;
-        const createdTrip = {
-          ...saved,
-          id: saved.id || saved._id,
-          driver: selectedDriver?.label || 'Unassigned',
-          vehicle: selectedVehicle?.label || 'Unassigned',
-          actualDistance: 0,
-          progress: 0,
-          eta: 'Scheduled',
-          stops: [
-            { name: `${newManifest.source} Terminal`, time: 'Dispatched', status: 'Active' },
-            { name: `${newManifest.destination} Terminal`, time: 'Pending', status: 'Pending' }
-          ],
-          logs: [{ text: 'Trip manifest saved to database.', time: 'Just now' }]
-        };
-        setTrips(prev => [createdTrip, ...prev]);
-        setActiveTripId(createdTrip.id);
-        toast.success(`Manifest dispatched to database!`, {
-          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-        });
+      if (editingTrip) {
+        const res = await api.put(`/api/trips/${editingTrip._id}`, payload);
+        if (res.data?.success) {
+          toast.success('Trip updated successfully!', {
+            style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+          });
+          setEditingTrip(null);
+          setDispatchMode(false);
+          loadData();
+        }
+      } else {
+        const res = await api.post('/api/trips', payload);
+        if (res.data?.success) {
+          if (payload.status === 'Dispatched') {
+            await Promise.all([
+              api.put(`/api/vehicles/${payload.vehicle}`, { status: 'On Trip' }),
+              api.put(`/api/drivers/${payload.driver}`, { status: 'On Trip' })
+            ]);
+          }
+          toast.success('Trip created successfully!', {
+            style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+          });
+          setDispatchMode(false);
+          loadData();
+        }
       }
     } catch (err) {
-      console.warn('Backend write failed — saving trip locally.', err);
-      const createdId = 'TRK-' + (trips.length + 200);
-      const createdTrip = {
-        ...newManifest,
-        id: createdId,
-        driver: selectedDriver?.label || newManifest.driverId || 'Unassigned',
-        vehicle: selectedVehicle?.label || newManifest.vehicleId || 'Unassigned',
-        cargoWeight: parseFloat(newManifest.cargoWeight),
-        revenue: parseFloat(newManifest.revenue) || 0,
-        plannedDistance: parseFloat(newManifest.plannedDistance),
-        startOdometer: parseFloat(newManifest.startOdometer) || 0,
-        actualDistance: 0, progress: 0, eta: 'Scheduled',
-        stops: [
-          { name: `${newManifest.source} Terminal`, time: 'Dispatched', status: 'Active' },
-          { name: `${newManifest.destination} Terminal`, time: 'Pending', status: 'Pending' }
-        ],
-        logs: [{ text: 'Trip manifest created locally (offline).', time: 'Just now' }]
-      };
-      setTrips(prev => [createdTrip, ...prev]);
-      setActiveTripId(createdId);
-      toast.success(`Manifest ${createdId} saved locally (offline mode).`, {
-        style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-      });
+      toast.error(err.response?.data?.message || err.message || 'Operation failed');
     }
 
-    setDispatchMode(false);
     setNewManifest({
       vehicleId: '',
       driverId: '',
@@ -264,6 +288,109 @@ export default function Trips() {
       startOdometer: '',
       status: 'Draft'
     });
+  };
+
+  const handleUpdateStatus = async (newStatus) => {
+    if (!activeTrip?._id) return;
+    
+    let extraFields = {};
+    if (newStatus === 'Completed') {
+      const endOdoStr = window.prompt("Enter End Odometer (mi):", activeTrip.startOdometer || "");
+      if (endOdoStr === null) return;
+      const actualDistStr = window.prompt("Enter Actual Distance (mi):", activeTrip.plannedDistance || "");
+      if (actualDistStr === null) return;
+      
+      const endOdo = parseFloat(endOdoStr);
+      const actualDist = parseFloat(actualDistStr);
+      
+      if (isNaN(endOdo) || isNaN(actualDist)) {
+        toast.error("Odometer and distance must be valid numbers.");
+        return;
+      }
+      
+      extraFields = {
+        endOdometer: endOdo,
+        actualDistance: actualDist,
+        completionDate: new Date().toISOString(),
+        progress: 100
+      };
+    } else if (newStatus === 'Dispatched') {
+      extraFields = {
+        dispatchDate: new Date().toISOString(),
+        progress: 50
+      };
+    }
+
+    try {
+      const res = await api.put(`/api/trips/${activeTrip._id}`, {
+        status: newStatus,
+        ...extraFields
+      });
+
+      if (res.data?.success) {
+        const vehicleId = activeTrip.vehicle?._id || activeTrip.vehicle;
+        const driverId = activeTrip.driver?._id || activeTrip.driver;
+        
+        if (newStatus === 'Dispatched') {
+          if (vehicleId) await api.put(`/api/vehicles/${vehicleId}`, { status: 'On Trip' });
+          if (driverId) await api.put(`/api/drivers/${driverId}`, { status: 'On Trip' });
+        } else if (newStatus === 'Completed') {
+          if (vehicleId) await api.put(`/api/vehicles/${vehicleId}`, { status: 'Available', odometer: extraFields.endOdometer });
+          if (driverId) await api.put(`/api/drivers/${driverId}`, { status: 'Available' });
+        } else if (newStatus === 'Cancelled') {
+          if (vehicleId) await api.put(`/api/vehicles/${vehicleId}`, { status: 'Available' });
+          if (driverId) await api.put(`/api/drivers/${driverId}`, { status: 'Available' });
+        }
+
+        toast.success(`Trip status updated to ${newStatus}!`, {
+          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+        });
+        loadData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Operation failed');
+    }
+  };
+
+  const handleEditTripClick = (trip) => {
+    setEditingTrip(trip);
+    setNewManifest({
+      vehicleId: trip.vehicle?._id || trip.vehicle || '',
+      driverId: trip.driver?._id || trip.driver || '',
+      cargoWeight: trip.cargoWeight || '',
+      revenue: trip.revenue || '',
+      fuelConsumed: trip.fuelConsumed || 0,
+      source: trip.source || '',
+      destination: trip.destination || '',
+      plannedDistance: trip.plannedDistance || '',
+      startOdometer: trip.startOdometer || '',
+      status: trip.status || 'Draft'
+    });
+    setDispatchMode(true);
+  };
+
+  const handleDeleteTripClick = async (trip) => {
+    if (!window.confirm(`Are you sure you want to delete trip ${trip.id}?`)) {
+      return;
+    }
+
+    try {
+      const res = await api.delete(`/api/trips/${trip._id}`);
+      if (res.data?.success) {
+        if (trip.status === 'Dispatched') {
+          const vehicleId = trip.vehicle?._id || trip.vehicle;
+          const driverId = trip.driver?._id || trip.driver;
+          if (vehicleId) await api.put(`/api/vehicles/${vehicleId}`, { status: 'Available' });
+          if (driverId) await api.put(`/api/drivers/${driverId}`, { status: 'Available' });
+        }
+        toast.success('Trip deleted successfully!', {
+          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+        });
+        loadData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Operation failed');
+    }
   };
 
   const getStatusColorClass = (status) => {
@@ -665,6 +792,54 @@ export default function Trips() {
                 </div>
               </div>
 
+            </div>
+          </div>
+
+          <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-4">
+              Manifest Actions
+            </h4>
+            <div className="flex flex-wrap gap-2.5">
+              {activeTrip && activeTrip.status === 'Draft' && (
+                <button
+                  onClick={() => handleUpdateStatus('Dispatched')}
+                  className="flex-1 min-w-[100px] px-3.5 py-2 bg-brand-primary text-white rounded-xl text-xs font-semibold hover:bg-brand-primary/95 transition-all cursor-pointer text-center"
+                >
+                  Dispatch Trip
+                </button>
+              )}
+              {activeTrip && activeTrip.status === 'Dispatched' && (
+                <>
+                  <button
+                    onClick={() => handleUpdateStatus('Completed')}
+                    className="flex-1 min-w-[100px] px-3.5 py-2 bg-brand-success text-white rounded-xl text-xs font-semibold hover:bg-brand-success/95 transition-all cursor-pointer text-center font-bold"
+                  >
+                    Complete Trip
+                  </button>
+                  <button
+                    onClick={() => handleUpdateStatus('Cancelled')}
+                    className="flex-1 min-w-[100px] px-3.5 py-2 bg-brand-danger text-white rounded-xl text-xs font-semibold hover:bg-brand-danger/95 transition-all cursor-pointer text-center font-bold"
+                  >
+                    Cancel Trip
+                  </button>
+                </>
+              )}
+              {activeTrip && (
+                <>
+                  <button
+                    onClick={() => handleEditTripClick(activeTrip)}
+                    className="px-3.5 py-2 bg-surface text-txt-primary border border-border-custom rounded-xl text-xs font-bold hover:bg-surface/80 transition-all cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTripClick(activeTrip)}
+                    className="px-3.5 py-2 bg-surface text-brand-danger border border-border-custom rounded-xl text-xs font-bold hover:bg-brand-danger/10 transition-all cursor-pointer"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
