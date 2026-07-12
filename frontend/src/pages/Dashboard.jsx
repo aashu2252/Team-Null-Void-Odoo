@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 import {
   TrendingUp,
   TrendingDown,
@@ -34,6 +35,23 @@ import {
 } from 'recharts';
 
 export default function Dashboard() {
+  const { user } = useAuth();
+
+  const getRoleGreeting = (role) => {
+    switch (role) {
+      case 'Dispatcher':
+        return 'Welcome Back, Dispatcher Control Lead';
+      case 'Fleet Manager':
+        return 'Welcome Back, Fleet Operations Director';
+      case 'Safety Officer':
+        return 'Welcome Back, Chief Safety & Compliance Officer';
+      case 'Financial Analyst':
+        return 'Welcome Back, Principal Financial Analyst';
+      default:
+        return `Welcome Back, ${role || 'Operations Lead'}`;
+    }
+  };
+
   const timelineData = [
     { hour: '06:00', trips: 12 },
     { hour: '08:00', trips: 28 },
@@ -134,9 +152,9 @@ export default function Dashboard() {
       {/* HERO SECTION / HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card-bg border border-border-custom p-6 rounded-[20px] shadow-premium">
         <div>
-          <h2 className="text-xl font-bold text-txt-primary">Welcome Back, Lead Dispatcher</h2>
+          <h2 className="text-xl font-bold text-txt-primary">{getRoleGreeting(user?.role)}</h2>
           <p className="text-xs text-txt-secondary mt-1">
-            Today is Sunday, July 12, 2026. Here is your operational telemetry snapshot.
+            Today is Sunday, July 12, 2026. Here is your {user?.role ? `${user.role} console` : 'operational telemetry'} snapshot.
           </p>
         </div>
         

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Compass,
@@ -15,23 +15,29 @@ import {
   FileText,
   AlertCircle,
   CheckCircle2,
-  Calendar
+  Calendar,
+  Layers,
+  TrendingUp
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import api from '../services/api';
 
 export default function Trips() {
   const [trips, setTrips] = useState([
     {
       id: 'TRK-204',
-      cargo: 'Pharmaceuticals (Temp-Controlled)',
-      value: '$280,000',
+      cargoWeight: 24000,
+      revenue: 2800,
       driver: 'Marcus Vance',
       vehicle: 'VH-101 (Volvo FH16)',
-      expenses: '$840.00',
-      status: 'In Transit',
-      origin: 'New York City (NY)',
+      fuelConsumed: 32,
+      status: 'Dispatched',
+      source: 'New York City (NY)',
       destination: 'Washington D.C. (WDC)',
-      distance: '240 Miles',
+      plannedDistance: 240,
+      actualDistance: 180,
+      startOdometer: 42000,
+      endOdometer: 42240,
       eta: '2:45 PM (On Time)',
       progress: 75,
       stops: [
@@ -42,23 +48,26 @@ export default function Trips() {
       ],
       logs: [
         { text: 'Departed NYC Hub terminal on schedule.', time: '08:00 AM' },
-        { text: 'Temperature sensor telemetry verified at 38°F.', time: '09:15 AM' },
+        { text: 'Cargo checklist validation cleared.', time: '09:15 AM' },
         { text: 'Arrived at Philadelphia checking stop.', time: '11:15 AM' },
         { text: 'Bypassed toll gate, auto-billed via TransitRFID.', time: '12:10 PM' }
       ]
     },
     {
       id: 'TRK-109',
-      cargo: 'Fresh Groceries',
-      value: '$45,000',
+      cargoWeight: 6000,
+      revenue: 1200,
       driver: 'Carlos Ruiz',
       vehicle: 'VH-105 (Isuzu NPR)',
-      expenses: '$320.00',
-      status: 'Delayed',
-      origin: 'Boston (MA)',
+      fuelConsumed: 26,
+      status: 'Cancelled',
+      source: 'Boston (MA)',
       destination: 'Newark (NJ)',
-      distance: '220 Miles',
-      eta: '4:15 PM (45m Delay)',
+      plannedDistance: 220,
+      actualDistance: 120,
+      startOdometer: 31000,
+      endOdometer: 31220,
+      eta: 'Route Cancelled (Road Hazard)',
       progress: 55,
       stops: [
         { name: 'Boston Warehouse (Departure)', time: '09:30 AM', status: 'Completed' },
@@ -69,21 +78,24 @@ export default function Trips() {
       logs: [
         { text: 'Manifest uploaded and driver dispatched.', time: '09:30 AM' },
         { text: 'Slowdown alert: Congestion near Worcester I-90.', time: '11:10 AM' },
-        { text: 'Driver reported severe highway construction delays.', time: '01:00 PM' }
+        { text: 'Driver reported severe highway safety issues; route cancelled.', time: '01:00 PM' }
       ]
     },
     {
       id: 'TRK-302',
-      cargo: 'Consumer Electronics',
-      value: '$650,000',
+      cargoWeight: 18000,
+      revenue: 3500,
       driver: 'Sarah Jenkins',
       vehicle: 'VH-102 (Peterbilt 579)',
-      expenses: '$1,200.00',
-      status: 'Loading',
-      origin: 'Richmond (VA)',
+      fuelConsumed: 0,
+      status: 'Draft',
+      source: 'Richmond (VA)',
       destination: 'Philadelphia (PA)',
-      distance: '260 Miles',
-      eta: 'Tomorrow 9:00 AM',
+      plannedDistance: 260,
+      actualDistance: 0,
+      startOdometer: 58000,
+      endOdometer: 58260,
+      eta: 'Awaiting Departure',
       progress: 5,
       stops: [
         { name: 'Richmond Depot (Departure)', time: 'Pending', status: 'Active' },
@@ -99,82 +111,181 @@ export default function Trips() {
 
   const [activeTripId, setActiveTripId] = useState('TRK-204');
   const [dispatchMode, setDispatchMode] = useState(false);
-  
+
+  // Backend refs for dropdowns
+  const [availableVehicles, setAvailableVehicles] = useState([]);
+  const [availableDrivers, setAvailableDrivers] = useState([]);
+
   const [newManifest, setNewManifest] = useState({
-    id: '',
-    cargo: '',
-    value: '',
-    driver: 'David Miller',
-    vehicle: 'VH-103 (Ford F-550)',
-    expenses: '$150.00',
-    origin: '',
+    vehicleId: '',
+    driverId: '',
+    cargoWeight: '',
+    revenue: '',
+    fuelConsumed: 0,
+    source: '',
     destination: '',
-    distance: '',
-    eta: ''
+    plannedDistance: '',
+    startOdometer: '',
+    status: 'Draft'
   });
+
+  // Load trips + vehicle/driver refs from backend
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [tripsRes, vehiclesRes, driversRes] = await Promise.all([
+          api.get('/api/trips'),
+          api.get('/api/vehicles'),
+          api.get('/api/drivers')
+        ]);
+
+        if (tripsRes.data?.success && tripsRes.data.data.length > 0) {
+          const mapped = tripsRes.data.data.map(t => ({
+            ...t,
+            id: t.id || t._id,
+            driver: t.driver?.name || t.driver || 'Unassigned',
+            vehicle: t.vehicle?.vehicleName || t.vehicle?.registrationNumber || t.vehicle || 'Unassigned',
+            stops: t.stops || [
+              { name: `${t.source} Terminal`, time: 'Dispatched', status: 'Active' },
+              { name: `${t.destination} Terminal`, time: 'Pending', status: 'Pending' }
+            ],
+            logs: t.logs || [{ text: 'Trip record loaded from database.', time: 'System' }],
+            progress: t.progress || (t.status === 'Completed' ? 100 : t.status === 'Dispatched' ? 50 : 0),
+            eta: t.eta || 'Scheduled'
+          }));
+          setTrips(mapped);
+          setActiveTripId(mapped[0]?.id);
+        }
+
+        if (vehiclesRes.data?.success) {
+          setAvailableVehicles(vehiclesRes.data.data.map(v => ({
+            _id: v._id,
+            label: `${v.vehicleName} (${v.registrationNumber})`
+          })));
+        }
+
+        if (driversRes.data?.success) {
+          setAvailableDrivers(driversRes.data.data.map(d => ({
+            _id: d._id,
+            label: d.name
+          })));
+        }
+      } catch (err) {
+        console.warn('Backend offline — retaining local trip manifests.');
+      }
+    };
+    loadData();
+  }, []);
 
   const activeTrip = trips.find(t => t.id === activeTripId) || trips[0];
 
-  const handleDispatchSubmit = (e) => {
+  const handleDispatchSubmit = async (e) => {
     e.preventDefault();
-    if (!newManifest.id || !newManifest.cargo || !newManifest.origin || !newManifest.destination) {
+    if (!newManifest.cargoWeight || !newManifest.source || !newManifest.destination || !newManifest.plannedDistance) {
       toast.error('Please fill out all required dispatch details.');
       return;
     }
 
-    const createdTrip = {
-      ...newManifest,
-      status: 'Loading',
-      progress: 0,
-      stops: [
-        { name: `${newManifest.origin} Terminal`, time: 'Dispatched', status: 'Active' },
-        { name: `${newManifest.destination} Terminal`, time: 'Pending', status: 'Pending' }
-      ],
-      logs: [
-        { text: `Trip dispatched by lead operations desk.`, time: 'Just now' }
-      ]
+    const selectedVehicle = availableVehicles.find(v => v._id === newManifest.vehicleId);
+    const selectedDriver = availableDrivers.find(d => d._id === newManifest.driverId);
+
+    const payload = {
+      source: newManifest.source,
+      destination: newManifest.destination,
+      vehicle: newManifest.vehicleId || undefined,
+      driver: newManifest.driverId || undefined,
+      cargoWeight: parseFloat(newManifest.cargoWeight),
+      plannedDistance: parseFloat(newManifest.plannedDistance),
+      startOdometer: parseFloat(newManifest.startOdometer) || 0,
+      revenue: parseFloat(newManifest.revenue) || 0,
+      status: newManifest.status || 'Draft'
     };
 
-    setTrips(prev => [createdTrip, ...prev]);
-    setActiveTripId(newManifest.id);
-    setDispatchMode(false);
-    toast.success(`Manifest ${newManifest.id} dispatched!`, {
-      style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-    });
+    try {
+      const res = await api.post('/api/trips', payload);
+      if (res.data?.success) {
+        const saved = res.data.data;
+        const createdTrip = {
+          ...saved,
+          id: saved.id || saved._id,
+          driver: selectedDriver?.label || 'Unassigned',
+          vehicle: selectedVehicle?.label || 'Unassigned',
+          actualDistance: 0,
+          progress: 0,
+          eta: 'Scheduled',
+          stops: [
+            { name: `${newManifest.source} Terminal`, time: 'Dispatched', status: 'Active' },
+            { name: `${newManifest.destination} Terminal`, time: 'Pending', status: 'Pending' }
+          ],
+          logs: [{ text: 'Trip manifest saved to database.', time: 'Just now' }]
+        };
+        setTrips(prev => [createdTrip, ...prev]);
+        setActiveTripId(createdTrip.id);
+        toast.success(`Manifest dispatched to database!`, {
+          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+        });
+      }
+    } catch (err) {
+      console.warn('Backend write failed — saving trip locally.', err);
+      const createdId = 'TRK-' + (trips.length + 200);
+      const createdTrip = {
+        ...newManifest,
+        id: createdId,
+        driver: selectedDriver?.label || newManifest.driverId || 'Unassigned',
+        vehicle: selectedVehicle?.label || newManifest.vehicleId || 'Unassigned',
+        cargoWeight: parseFloat(newManifest.cargoWeight),
+        revenue: parseFloat(newManifest.revenue) || 0,
+        plannedDistance: parseFloat(newManifest.plannedDistance),
+        startOdometer: parseFloat(newManifest.startOdometer) || 0,
+        actualDistance: 0, progress: 0, eta: 'Scheduled',
+        stops: [
+          { name: `${newManifest.source} Terminal`, time: 'Dispatched', status: 'Active' },
+          { name: `${newManifest.destination} Terminal`, time: 'Pending', status: 'Pending' }
+        ],
+        logs: [{ text: 'Trip manifest created locally (offline).', time: 'Just now' }]
+      };
+      setTrips(prev => [createdTrip, ...prev]);
+      setActiveTripId(createdId);
+      toast.success(`Manifest ${createdId} saved locally (offline mode).`, {
+        style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+      });
+    }
 
+    setDispatchMode(false);
     setNewManifest({
-      id: '',
-      cargo: '',
-      value: '',
-      driver: 'David Miller',
-      vehicle: 'VH-103 (Ford F-550)',
-      expenses: '$150.00',
-      origin: '',
+      vehicleId: '',
+      driverId: '',
+      cargoWeight: '',
+      revenue: '',
+      fuelConsumed: 0,
+      source: '',
       destination: '',
-      distance: '',
-      eta: ''
+      plannedDistance: '',
+      startOdometer: '',
+      status: 'Draft'
     });
   };
 
   const getStatusColorClass = (status) => {
     switch (status) {
-      case 'In Transit':
+      case 'Dispatched':
         return 'bg-brand-primary/10 text-brand-primary border-brand-primary/15';
-      case 'Delayed':
+      case 'Cancelled':
         return 'bg-brand-danger/10 text-brand-danger border-brand-danger/15';
-      case 'Loading':
+      case 'Draft':
         return 'bg-brand-orange/10 text-brand-orange border-brand-orange/15';
+      case 'Completed':
       default:
         return 'bg-brand-success/10 text-brand-success border-brand-success/15';
     }
   };
 
   return (
-    <div className="space-y-6 max-w-full">
+    <div className="space-y-6 max-w-full font-sans">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold text-txt-primary font-sans">Trip Dispatcher</h2>
-          <p className="text-xs text-txt-secondary mt-0.5">Route coordination, cargo checklists, driver tracking manifests.</p>
+          <h2 className="text-xl font-bold text-txt-primary">Trip Coordinator</h2>
+          <p className="text-xs text-txt-secondary mt-0.5">Route mapping, cargo weights, odometer records, and compliance tracking.</p>
         </div>
 
         <button
@@ -205,7 +316,7 @@ export default function Trips() {
               <div className="flex items-center gap-2">
                 <span>{t.id}</span>
                 <span className="w-1.5 h-1.5 rounded-full" style={{
-                  backgroundColor: t.status === 'In Transit' ? '#1677FF' : t.status === 'Delayed' ? '#EF4444' : '#F97316'
+                  backgroundColor: t.status === 'Dispatched' ? '#1677FF' : t.status === 'Cancelled' ? '#EF4444' : '#F97316'
                 }} />
               </div>
             </button>
@@ -229,48 +340,32 @@ export default function Trips() {
                   <Compass className="w-5 h-5 text-brand-primary" />
                   <h3 className="text-sm font-bold text-txt-primary">Create Dispatch Manifest</h3>
                 </div>
-
                 <form onSubmit={handleDispatchSubmit} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
-                        Trip Manifest ID*
+                        Cargo Weight (lbs)*
                       </label>
                       <input
-                        type="text"
+                        type="number"
                         required
-                        value={newManifest.id}
-                        onChange={(e) => setNewManifest(prev => ({ ...prev, id: e.target.value.toUpperCase() }))}
-                        placeholder="e.g. TRK-410"
+                        value={newManifest.cargoWeight}
+                        onChange={(e) => setNewManifest(prev => ({ ...prev, cargoWeight: e.target.value }))}
+                        placeholder="e.g. 24000"
                         className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none focus:border-brand-primary"
                       />
                     </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
-                        Cargo Type & Value*
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={newManifest.cargo}
-                        onChange={(e) => setNewManifest(prev => ({ ...prev, cargo: e.target.value, value: '$100,000' }))}
-                        placeholder="e.g. Automotive Spare Parts"
-                        className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none focus:border-brand-primary"
-                      />
-                    </div>
-                  </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
-                        Origin Station*
+                        Source Station*
                       </label>
                       <input
                         type="text"
                         required
-                        value={newManifest.origin}
-                        onChange={(e) => setNewManifest(prev => ({ ...prev, origin: e.target.value }))}
+                        value={newManifest.source}
+                        onChange={(e) => setNewManifest(prev => ({ ...prev, source: e.target.value }))}
                         placeholder="e.g. NYC Port Hub"
                         className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none focus:border-brand-primary"
                       />
@@ -291,30 +386,44 @@ export default function Trips() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-3">
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
-                        Route distance
+                        Planned Distance (mi)*
                       </label>
                       <input
-                        type="text"
-                        value={newManifest.distance}
-                        onChange={(e) => setNewManifest(prev => ({ ...prev, distance: e.target.value }))}
-                        placeholder="e.g. 840 Miles"
+                        type="number"
+                        required
+                        value={newManifest.plannedDistance}
+                        onChange={(e) => setNewManifest(prev => ({ ...prev, plannedDistance: e.target.value }))}
+                        placeholder="e.g. 240"
                         className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none focus:border-brand-primary"
                       />
                     </div>
 
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
-                        Target ETA Description
+                        Start Odometer (mi)
                       </label>
                       <input
-                        type="text"
-                        value={newManifest.eta}
-                        onChange={(e) => setNewManifest(prev => ({ ...prev, eta: e.target.value }))}
-                        placeholder="e.g. Tomorrow 4:00 PM"
+                        type="number"
+                        value={newManifest.startOdometer}
+                        onChange={(e) => setNewManifest(prev => ({ ...prev, startOdometer: e.target.value }))}
+                        placeholder="e.g. 42000"
                         className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none focus:border-brand-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
+                        Projected Revenue ($)
+                      </label>
+                      <input
+                        type="number"
+                        value={newManifest.revenue}
+                        onChange={(e) => setNewManifest(prev => ({ ...prev, revenue: e.target.value }))}
+                        placeholder="e.g. 2800"
+                        className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none"
                       />
                     </div>
                   </div>
@@ -322,16 +431,25 @@ export default function Trips() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
-                        Assigned Operator
+                        Assigned Driver
                       </label>
                       <select
-                        value={newManifest.driver}
-                        onChange={(e) => setNewManifest(prev => ({ ...prev, driver: e.target.value }))}
+                        value={newManifest.driverId}
+                        onChange={(e) => setNewManifest(prev => ({ ...prev, driverId: e.target.value }))}
                         className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 text-txt-primary px-3 py-2 rounded-xl text-xs focus:outline-none"
                       >
-                        <option value="David Miller">David Miller (Standby)</option>
-                        <option value="Amanda Ross">Amanda Ross (Off Duty)</option>
-                        <option value="Marcus Vance">Marcus Vance (Active)</option>
+                        <option value="">-- Select Driver --</option>
+                        {availableDrivers.length > 0 ? (
+                          availableDrivers.map(d => (
+                            <option key={d._id} value={d._id}>{d.label}</option>
+                          ))
+                        ) : (
+                          <>
+                            <option value="">David Miller (Standby)</option>
+                            <option value="">Amanda Ross (Off Duty)</option>
+                            <option value="">Marcus Vance (Active)</option>
+                          </>
+                        )}
                       </select>
                     </div>
 
@@ -340,12 +458,21 @@ export default function Trips() {
                         Assigned Vehicle
                       </label>
                       <select
-                        value={newManifest.vehicle}
-                        onChange={(e) => setNewManifest(prev => ({ ...prev, vehicle: e.target.value }))}
+                        value={newManifest.vehicleId}
+                        onChange={(e) => setNewManifest(prev => ({ ...prev, vehicleId: e.target.value }))}
                         className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 text-txt-primary px-3 py-2 rounded-xl text-xs focus:outline-none"
                       >
-                        <option value="VH-103 (Ford F-550)">VH-103 (Ford F-550)</option>
-                        <option value="VH-104 (Hino 268)">VH-104 (Hino 268)</option>
+                        <option value="">-- Select Vehicle --</option>
+                        {availableVehicles.length > 0 ? (
+                          availableVehicles.map(v => (
+                            <option key={v._id} value={v._id}>{v.label}</option>
+                          ))
+                        ) : (
+                          <>
+                            <option value="">VH-103 (Ford F-550)</option>
+                            <option value="">VH-104 (Hino 268)</option>
+                          </>
+                        )}
                       </select>
                     </div>
                   </div>
@@ -390,18 +517,18 @@ export default function Trips() {
                     <div className="p-3 bg-surface/50 dark:bg-card-elevated border border-border-custom/50 rounded-xl flex gap-3 items-center">
                       <Box className="w-5 h-5 text-brand-primary shrink-0" />
                       <div>
-                        <span className="text-[9px] uppercase font-bold text-txt-secondary">Cargo & Value</span>
-                        <p className="text-xs font-bold text-txt-primary mt-0.5">{activeTrip.cargo}</p>
-                        <span className="text-[10px] text-txt-muted">{activeTrip.value}</span>
+                        <span className="text-[9px] uppercase font-bold text-txt-secondary">Cargo Weight</span>
+                        <p className="text-xs font-bold text-txt-primary mt-0.5">{activeTrip.cargoWeight.toLocaleString()} lbs</p>
+                        <span className="text-[10px] text-txt-muted">Uptime Checked</span>
                       </div>
                     </div>
 
                     <div className="p-3 bg-surface/50 dark:bg-card-elevated border border-border-custom/50 rounded-xl flex gap-3 items-center">
                       <DollarSign className="w-5 h-5 text-brand-success shrink-0" />
                       <div>
-                        <span className="text-[9px] uppercase font-bold text-txt-secondary">Estimated Costs</span>
-                        <p className="text-xs font-bold text-txt-primary mt-0.5">{activeTrip.expenses}</p>
-                        <span className="text-[10px] text-txt-muted">Tolls & Fuel Allowance</span>
+                        <span className="text-[9px] uppercase font-bold text-txt-secondary">Projected Revenue</span>
+                        <p className="text-xs font-bold text-txt-primary mt-0.5">${activeTrip.revenue.toLocaleString()}</p>
+                        <span className="text-[10px] text-txt-muted">Tolls & Fuel Allowance Deducted</span>
                       </div>
                     </div>
 
@@ -472,12 +599,12 @@ export default function Trips() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <MapPin className="w-4 h-4 text-brand-primary shrink-0" />
-                  <span className="text-xs font-bold text-txt-primary">{activeTrip.origin}</span>
+                  <span className="text-xs font-bold text-txt-primary truncate max-w-[120px]">{activeTrip.source}</span>
                 </div>
                 <ArrowRight className="w-4 h-4 text-txt-muted shrink-0" />
                 <div className="flex items-center gap-1.5">
                   <MapPin className="w-4 h-4 text-brand-teal shrink-0" />
-                  <span className="text-xs font-bold text-txt-primary">{activeTrip.destination}</span>
+                  <span className="text-xs font-bold text-txt-primary truncate max-w-[120px]">{activeTrip.destination}</span>
                 </div>
               </div>
 
@@ -496,8 +623,8 @@ export default function Trips() {
 
               <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
                 <div>
-                  <span className="text-[9px] text-txt-muted uppercase font-bold block">Route Distance</span>
-                  <span className="text-txt-primary">{activeTrip.distance}</span>
+                  <span className="text-[9px] text-txt-muted uppercase font-bold block">Planned Distance</span>
+                  <span className="text-txt-primary">{activeTrip.plannedDistance} mi</span>
                 </div>
                 <div>
                   <span className="text-[9px] text-txt-muted uppercase font-bold block">Telemetry ETA</span>
@@ -528,7 +655,7 @@ export default function Trips() {
                 </div>
 
                 <div className="flex justify-between text-[8px] text-txt-muted font-bold font-mono px-2">
-                  <span>DEP: {activeTrip.origin.split(' ')[0]}</span>
+                  <span>DEP: {activeTrip.source.split(' ')[0]}</span>
                   <span>ARR: {activeTrip.destination.split(' ')[0]}</span>
                 </div>
               </div>

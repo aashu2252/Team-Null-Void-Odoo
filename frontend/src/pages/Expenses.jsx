@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   CreditCard,
@@ -12,64 +12,141 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { toast } from 'react-hot-toast';
+import api from '../services/api';
 
 export default function Expenses() {
   const [expenses, setExpenses] = useState([
-    { id: 'EXP-403', title: 'Toll Auto-Billing I-95', category: 'Tolls', amount: '$42.50', date: 'Jul 12, 2026', vehicle: 'VH-101', status: 'Cleared' },
-    { id: 'EXP-402', title: 'Fuel Refill Pilot Station', category: 'Fuel', amount: '$385.00', date: 'Jul 12, 2026', vehicle: 'VH-101', status: 'Cleared' },
-    { id: 'EXP-401', title: 'Hino Engine Repair WO-804', category: 'Maintenance', amount: '$450.00', date: 'Jul 12, 2026', vehicle: 'VH-104', status: 'Pending Approval' }
+    { id: 'EXP-403', description: 'Toll Auto-Billing I-95', type: 'Toll', amount: 42.50, date: '2026-07-12', vehicle: 'VH-101', trip: 'TRK-204', status: 'Cleared' },
+    { id: 'EXP-402', description: 'Fuel Refill Pilot Station', type: 'Other', amount: 385.00, date: '2026-07-12', vehicle: 'VH-101', trip: 'TRK-204', status: 'Cleared' },
+    { id: 'EXP-401', description: 'Hino Engine Repair WO-804', type: 'Repair', amount: 450.00, date: '2026-07-12', vehicle: 'VH-104', trip: 'TRK-302', status: 'Pending Approval' }
   ]);
 
   const expenseCategoryData = [
-    { month: 'May', Fuel: 18000, Maintenance: 8500, Tolls: 3200, Other: 1500 },
-    { month: 'Jun', Fuel: 21000, Maintenance: 12000, Tolls: 4100, Other: 1800 },
-    { month: 'Jul', Fuel: 19400, Maintenance: 9200, Tolls: 3900, Other: 1600 }
+    { month: 'May', Toll: 3200, Maintenance: 8500, Repair: 4200, Insurance: 3000, Other: 1500 },
+    { month: 'Jun', Toll: 4100, Maintenance: 12000, Repair: 5400, Insurance: 3000, Other: 1800 },
+    { month: 'Jul', Toll: 3900, Maintenance: 9200, Repair: 4900, Insurance: 3000, Other: 1600 }
   ];
 
   const [showAddForm, setShowAddForm] = useState(false);
+  const [vehicleRefs, setVehicleRefs] = useState([]);
+  const [tripRefs, setTripRefs] = useState([]);
   const [newExpense, setNewExpense] = useState({
-    title: '',
-    category: 'Fuel',
+    description: '',
+    type: 'Toll',
     amount: '',
-    vehicle: 'VH-101'
+    vehicleId: '',
+    tripId: '',
+    date: ''
   });
 
-  const handleAddExpense = (e) => {
+  // Load expenses and dropdown refs from backend on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [expRes, vehiclesRes, tripsRes] = await Promise.all([
+          api.get('/api/expenses'),
+          api.get('/api/vehicles'),
+          api.get('/api/trips')
+        ]);
+
+        if (expRes.data?.success && expRes.data.data.length > 0) {
+          const mapped = expRes.data.data.map(e => ({
+            ...e,
+            id: e.id || e._id,
+            vehicle: e.vehicle?.registrationNumber || e.vehicle || 'N/A',
+            trip: e.trip?.id || e.trip || 'N/A',
+            type: e.type || e.category || 'Other',
+            status: e.status || 'Pending Approval'
+          }));
+          setExpenses(mapped);
+        }
+
+        if (vehiclesRes.data?.success) {
+          setVehicleRefs(vehiclesRes.data.data.map(v => ({
+            _id: v._id,
+            label: `${v.registrationNumber} — ${v.vehicleName}`
+          })));
+        }
+
+        if (tripsRes.data?.success) {
+          setTripRefs(tripsRes.data.data.map(t => ({
+            _id: t._id,
+            label: `${t.id || t._id.slice(-6)} (${t.source} → ${t.destination})`
+          })));
+        }
+      } catch (err) {
+        console.warn('Backend offline — retaining local expense ledger.');
+      }
+    };
+    loadData();
+  }, []);
+
+  const handleAddExpense = async (e) => {
     e.preventDefault();
-    if (!newExpense.title || !newExpense.amount) {
+    if (!newExpense.description || !newExpense.amount || !newExpense.date) {
       toast.error('Please enter all required expense details.');
       return;
     }
 
-    const createdId = 'EXP-40' + (expenses.length + 1);
-    const entry = {
-      ...newExpense,
-      id: createdId,
-      date: 'Jul 12, 2026',
-      amount: `$${parseFloat(newExpense.amount).toFixed(2)}`,
-      status: 'Pending Approval'
+    const payload = {
+      vehicle: newExpense.vehicleId || undefined,
+      trip: newExpense.tripId || undefined,
+      type: newExpense.type,
+      amount: parseFloat(newExpense.amount),
+      description: newExpense.description,
+      date: newExpense.date
     };
 
-    setExpenses(prev => [entry, ...prev]);
-    setShowAddForm(false);
-    toast.success(`Expense ${createdId} added for approval.`, {
-      style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-    });
+    try {
+      const res = await api.post('/api/expenses', payload);
+      if (res.data?.success) {
+        const saved = res.data.data;
+        const entry = {
+          ...saved,
+          id: saved.id || saved._id,
+          vehicle: vehicleRefs.find(v => v._id === newExpense.vehicleId)?.label || newExpense.vehicleId || 'N/A',
+          trip: tripRefs.find(t => t._id === newExpense.tripId)?.label || newExpense.tripId || 'N/A',
+          status: 'Pending Approval'
+        };
+        setExpenses(prev => [entry, ...prev]);
+        toast.success('Expense saved to database!', {
+          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+        });
+      }
+    } catch (err) {
+      console.warn('Backend write failed — saving expense locally.', err);
+      const createdId = 'EXP-40' + (expenses.length + 1);
+      const entry = {
+        ...newExpense,
+        id: createdId,
+        amount: parseFloat(newExpense.amount),
+        vehicle: vehicleRefs.find(v => v._id === newExpense.vehicleId)?.label || newExpense.vehicleId || 'N/A',
+        trip: tripRefs.find(t => t._id === newExpense.tripId)?.label || newExpense.tripId || 'N/A',
+        status: 'Pending Approval'
+      };
+      setExpenses(prev => [entry, ...prev]);
+      toast.success(`Expense ${createdId} added locally (offline mode).`, {
+        style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+      });
+    }
 
+    setShowAddForm(false);
     setNewExpense({
-      title: '',
-      category: 'Fuel',
+      description: '',
+      type: 'Toll',
       amount: '',
-      vehicle: 'VH-101'
+      vehicleId: '',
+      tripId: '',
+      date: ''
     });
   };
 
   return (
-    <div className="space-y-6 max-w-full">
+    <div className="space-y-6 max-w-full font-sans">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl font-bold text-txt-primary">Expense Management Console</h2>
-          <p className="text-xs text-txt-secondary mt-0.5">Audit toll expenditures, service invoices, fuel receipts, logistics reimbursements.</p>
+          <p className="text-xs text-txt-secondary mt-0.5">Audit toll expenditures, service invoices, fuel receipts, and Mongoose expense logs.</p>
         </div>
 
         <button
@@ -96,16 +173,16 @@ export default function Expenses() {
                 <h3 className="text-xs font-bold uppercase tracking-wider text-txt-primary">Add Expense Invoice</h3>
               </div>
 
-              <form onSubmit={handleAddExpense} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+              <form onSubmit={handleAddExpense} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2">
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
-                    Invoice Title / Vendor Name*
+                    Expense Description / Title*
                   </label>
                   <input
                     type="text"
                     required
-                    value={newExpense.title}
-                    onChange={(e) => setNewExpense(prev => ({ ...prev, title: e.target.value }))}
+                    value={newExpense.description}
+                    onChange={(e) => setNewExpense(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="e.g. EZPass Toll Invoice"
                     className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none focus:border-brand-primary"
                   />
@@ -113,17 +190,18 @@ export default function Expenses() {
 
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
-                    Expense Category
+                    Expense Type
                   </label>
                   <select
-                    value={newExpense.category}
-                    onChange={(e) => setNewExpense(prev => ({ ...prev, category: e.target.value }))}
+                    value={newExpense.type}
+                    onChange={(e) => setNewExpense(prev => ({ ...prev, type: e.target.value }))}
                     className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 text-txt-primary px-3 py-2 rounded-xl text-xs focus:outline-none"
                   >
-                    <option value="Fuel">Fuel Refill</option>
-                    <option value="Maintenance">Maintenance Repair</option>
-                    <option value="Tolls">Road Tolls</option>
-                    <option value="Other">Corporate/Other</option>
+                    <option value="Toll">Toll Road</option>
+                    <option value="Maintenance">Maintenance Service</option>
+                    <option value="Repair">Emergency Repair</option>
+                    <option value="Insurance">Asset Insurance</option>
+                    <option value="Other">Other Expenses</option>
                   </select>
                 </div>
 
@@ -144,20 +222,66 @@ export default function Expenses() {
 
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
-                    Select Fleet Vehicle
+                    Expense Date*
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newExpense.date}
+                    onChange={(e) => setNewExpense(prev => ({ ...prev, date: e.target.value }))}
+                    className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none focus:border-brand-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
+                    Select Vehicle
                   </label>
                   <select
-                    value={newExpense.vehicle}
-                    onChange={(e) => setNewExpense(prev => ({ ...prev, vehicle: e.target.value }))}
+                    value={newExpense.vehicleId}
+                    onChange={(e) => setNewExpense(prev => ({ ...prev, vehicleId: e.target.value }))}
                     className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 text-txt-primary px-3 py-2 rounded-xl text-xs focus:outline-none"
                   >
-                    <option value="VH-101">VH-101 (Volvo FH16)</option>
-                    <option value="VH-102">VH-102 (Peterbilt 579)</option>
-                    <option value="VH-104">VH-104 (Hino 268)</option>
+                    <option value="">-- Select Vehicle --</option>
+                    {vehicleRefs.length > 0 ? (
+                      vehicleRefs.map(v => (
+                        <option key={v._id} value={v._id}>{v.label}</option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="">VH-101 (Volvo FH16)</option>
+                        <option value="">VH-102 (Peterbilt 579)</option>
+                        <option value="">VH-104 (Hino 268)</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
-                <div className="sm:col-span-2 flex justify-end gap-2 pt-2 border-t border-border-custom mt-2">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
+                    Select Linked Trip
+                  </label>
+                  <select
+                    value={newExpense.tripId}
+                    onChange={(e) => setNewExpense(prev => ({ ...prev, tripId: e.target.value }))}
+                    className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 text-txt-primary px-3 py-2 rounded-xl text-xs focus:outline-none"
+                  >
+                    <option value="">-- Select Trip --</option>
+                    {tripRefs.length > 0 ? (
+                      tripRefs.map(t => (
+                        <option key={t._id} value={t._id}>{t.label}</option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="">TRK-204</option>
+                        <option value="">TRK-109</option>
+                        <option value="">TRK-302</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                <div className="sm:col-span-3 flex justify-end gap-2 pt-2 border-t border-border-custom mt-2">
                   <button
                     type="button"
                     onClick={() => setShowAddForm(false)}
@@ -190,10 +314,11 @@ export default function Expenses() {
                   <Tooltip
                     contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-custom)', borderRadius: '12px', fontSize: '11px' }}
                   />
-                  <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                  <Bar dataKey="Fuel" stackId="a" fill="#1677FF" />
+                  <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px' }} wrapperClassName="capitalize" />
+                  <Bar dataKey="Toll" stackId="a" fill="#1677FF" />
                   <Bar dataKey="Maintenance" stackId="a" fill="#EF4444" />
-                  <Bar dataKey="Tolls" stackId="a" fill="#06B6D4" />
+                  <Bar dataKey="Repair" stackId="a" fill="#06B6D4" />
+                  <Bar dataKey="Insurance" stackId="a" fill="#8B5CF6" />
                   <Bar dataKey="Other" stackId="a" fill="#94A3B8" />
                 </BarChart>
               </ResponsiveContainer>
@@ -211,22 +336,24 @@ export default function Expenses() {
                   <tr className="text-txt-muted text-[10px] uppercase font-bold tracking-wider border-b border-border-custom/50 pb-2">
                     <th className="pb-3">Expense ID</th>
                     <th className="pb-3">Description</th>
-                    <th className="pb-3">Category</th>
+                    <th className="pb-3">Type</th>
                     <th className="pb-3">Date</th>
                     <th className="pb-3">Vehicle</th>
+                    <th className="pb-3">Trip Link</th>
                     <th className="pb-3 text-right">Amount</th>
-                    <th className="pb-3 text-center">Audit Status</th>
+                    <th className="pb-3 text-center">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-custom/50">
                   {expenses.map((exp) => (
                     <tr key={exp.id} className="hover:bg-surface/30 transition-colors">
                       <td className="py-3.5 font-bold text-txt-primary">{exp.id}</td>
-                      <td className="py-3.5 font-semibold text-txt-primary">{exp.title}</td>
-                      <td className="py-3.5 text-txt-secondary">{exp.category}</td>
-                      <td className="py-3.5 text-txt-secondary">{exp.date}</td>
+                      <td className="py-3.5 font-semibold text-txt-primary">{exp.description}</td>
+                      <td className="py-3.5 text-txt-secondary">{exp.type}</td>
+                      <td className="py-3.5 text-txt-secondary font-mono">{exp.date}</td>
                       <td className="py-3.5 font-mono text-brand-primary font-semibold">{exp.vehicle}</td>
-                      <td className="py-3.5 text-right font-mono font-bold text-txt-primary">{exp.amount}</td>
+                      <td className="py-3.5 font-mono text-txt-secondary">{exp.trip}</td>
+                      <td className="py-3.5 text-right font-mono font-bold text-txt-primary">${exp.amount.toLocaleString()}</td>
                       <td className="py-3.5 text-center">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           exp.status === 'Cleared' ? 'bg-brand-success/10 text-brand-success' : 'bg-brand-warning/10 text-brand-warning animate-pulse'
