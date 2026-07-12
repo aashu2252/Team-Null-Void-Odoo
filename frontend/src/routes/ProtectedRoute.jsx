@@ -1,9 +1,10 @@
 import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function ProtectedRoute() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -23,6 +24,31 @@ export default function ProtectedRoute() {
     return <Navigate to="/login" replace />;
   }
 
-  // Render child routes
+  const roleName = user?.role?.name || user?.role || 'Dispatcher';
+  const path = location.pathname;
+
+  if (roleName === 'Driver') {
+    const allowed = ['/dashboard', '/dashboard/trips', '/dashboard/settings'];
+    if (!allowed.includes(path)) {
+      return <Navigate to="/dashboard" replace />;
+    }
+  } else if (roleName === 'Safety Officer') {
+    const allowed = ['/dashboard', '/dashboard/drivers', '/dashboard/settings'];
+    if (!allowed.includes(path)) {
+      return <Navigate to="/dashboard" replace />;
+    }
+  } else if (roleName === 'Financial Analyst') {
+    const allowed = [
+      '/dashboard',
+      '/dashboard/fuel-logs',
+      '/dashboard/expenses',
+      '/dashboard/reports',
+      '/dashboard/settings'
+    ];
+    if (!allowed.includes(path)) {
+      return <Navigate to="/dashboard" replace />;
+    }
+  }
+
   return <Outlet />;
 }

@@ -363,6 +363,444 @@ export default function Dashboard() {
   }, [user]);
   // ────────────────────────────────────────────────────────────────────────
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-3">
+          <svg className="animate-spin h-8 w-8 text-brand-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="text-xs text-txt-secondary font-semibold">Syncing Real-time Dashboard...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const roleName = user?.role?.name || user?.role || 'Dispatcher';
+
+  if (roleName === 'Driver') {
+    const currentDriver = drivers.find(d => (d.user?._id || d.user) === user?._id);
+    const driverTrips = currentDriver ? trips.filter(t => (t.driver?._id || t.driver) === currentDriver._id) : [];
+    const activeTrip = driverTrips.find(t => t.status === 'Dispatched' || t.status === 'Active');
+    const vehicleObj = activeTrip ? vehicles.find(v => v._id === (activeTrip.vehicle?._id || activeTrip.vehicle)) : null;
+    const completedTrips = driverTrips.filter(t => t.status === 'Completed' || t.status === 'Cancelled');
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-6 max-w-full font-sans"
+      >
+        {/* Hero Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card-bg border border-border-custom p-6 rounded-[20px] shadow-premium">
+          <div>
+            <div className="flex items-center gap-2.5 mb-1">
+              <h2 className="text-xl font-bold text-txt-primary">{greeting.headline}</h2>
+              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${greeting.badgeColor}`}>
+                {greeting.badge}
+              </span>
+            </div>
+            <p className="text-xs text-txt-secondary mt-1">
+              {greeting.subtitle}
+            </p>
+          </div>
+        </div>
+
+        {/* DRIVER ACTIVE TELEMETRY */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Card 1: Active Trip Details */}
+          <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-4">
+              Active Trip Telemetry
+            </h3>
+
+            {activeTrip ? (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-brand-primary">{activeTrip.id || activeTrip._id.slice(-6)}</span>
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-brand-primary/10 text-brand-primary uppercase">
+                    {activeTrip.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-surface/50 border border-border-custom/50 rounded-xl">
+                    <span className="text-[9px] uppercase font-bold text-txt-secondary block">Source</span>
+                    <span className="text-xs font-bold text-txt-primary mt-0.5 block">{activeTrip.source}</span>
+                  </div>
+                  <div className="p-3 bg-surface/50 border border-border-custom/50 rounded-xl">
+                    <span className="text-[9px] uppercase font-bold text-txt-secondary block">Destination</span>
+                    <span className="text-xs font-bold text-txt-primary mt-0.5 block">{activeTrip.destination}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-[9px] font-bold text-txt-muted mb-1">
+                    <span>TRIP PROGRESS</span>
+                    <span>{activeTrip.progress || 50}%</span>
+                  </div>
+                  <div className="w-full bg-surface h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-brand-primary rounded-full"
+                      style={{ width: `${activeTrip.progress || 50}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
+                  <div>
+                    <span className="text-[9px] text-txt-muted uppercase font-bold block">Planned Distance</span>
+                    <span className="text-txt-primary">{activeTrip.plannedDistance} mi</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-txt-muted uppercase font-bold block">Cargo Weight</span>
+                    <span className="text-txt-primary">{activeTrip.cargoWeight.toLocaleString()} lbs</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-txt-secondary text-xs">
+                No active trip assigned. Enjoy your standby status!
+              </div>
+            )}
+          </div>
+
+          {/* Card 2: Assigned Vehicle Details */}
+          <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-4">
+              Assigned Vehicle Details
+            </h3>
+
+            {vehicleObj ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-brand-teal/10 rounded-xl flex items-center justify-center text-brand-teal">
+                    <Truck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-txt-primary">{vehicleObj.vehicleName}</h4>
+                    <span className="text-[10px] text-txt-muted font-mono">{vehicleObj.registrationNumber}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
+                  <div>
+                    <span className="text-[9px] text-txt-muted uppercase font-bold block">Model</span>
+                    <span className="text-txt-primary">{vehicleObj.model}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-txt-muted uppercase font-bold block">Current Odometer</span>
+                    <span className="text-txt-primary">{vehicleObj.odometer.toLocaleString()} mi</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-txt-muted uppercase font-bold block">Vehicle Type</span>
+                    <span className="text-txt-primary">{vehicleObj.type}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-txt-muted uppercase font-bold block">Telemetry Status</span>
+                    <span className="text-brand-success">Connected</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-txt-secondary text-xs">
+                No vehicle currently assigned.
+              </div>
+            )}
+          </div>
+
+        </div>
+
+        {/* Card 3: Trip History */}
+        <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-4">
+            Driver Trip History
+          </h3>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="text-txt-muted text-[10px] uppercase font-bold tracking-wider border-b border-border-custom/50 pb-2">
+                  <th className="pb-3">Trip ID</th>
+                  <th className="pb-3">Route</th>
+                  <th className="pb-3">Date</th>
+                  <th className="pb-3 text-right">Distance</th>
+                  <th className="pb-3 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-custom/50">
+                {completedTrips.length > 0 ? (
+                  completedTrips.map((t) => (
+                    <tr key={t.id || t._id} className="hover:bg-surface/30 transition-colors">
+                      <td className="py-3.5 font-bold text-txt-primary">{t.id || t._id.slice(-6)}</td>
+                      <td className="py-3.5 font-semibold text-txt-primary">
+                        {t.source} → {t.destination}
+                      </td>
+                      <td className="py-3.5 text-txt-secondary font-mono">
+                        {t.completionDate ? new Date(t.completionDate).toISOString().split('T')[0] : 'N/A'}
+                      </td>
+                      <td className="py-3.5 text-right font-mono text-txt-primary">
+                        {t.actualDistance || t.plannedDistance} mi
+                      </td>
+                      <td className="py-3.5 text-center">
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                          t.status === 'Completed' ? 'bg-brand-success/10 text-brand-success border-brand-success/20' : 'bg-brand-danger/10 text-brand-danger border-brand-danger/20'
+                        }`}>
+                          {t.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" className="text-center py-6 text-txt-secondary">
+                      No past trip history found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </motion.div>
+    );
+  }
+
+  if (roleName === 'Safety Officer') {
+    const safetyKPIs = kpis.filter(k => k.title !== 'Fuel Usage Today' && k.title !== 'Pending Deliveries');
+    const expiredDrivers = drivers.filter(d => d.licenseExpiryDate && new Date(d.licenseExpiryDate) < new Date());
+    const nearExpiryDrivers = drivers.filter(d => {
+      if (!d.licenseExpiryDate) return false;
+      const daysLeft = (new Date(d.licenseExpiryDate) - new Date()) / (1000 * 60 * 60 * 24);
+      return daysLeft > 0 && daysLeft <= 30;
+    });
+
+    const topSafeDrivers = [...drivers]
+      .sort((a, b) => b.safetyScore - a.safetyScore)
+      .slice(0, 5);
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-6 max-w-full font-sans"
+      >
+        {/* Hero Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card-bg border border-border-custom p-6 rounded-[20px] shadow-premium">
+          <div>
+            <div className="flex items-center gap-2.5 mb-1">
+              <h2 className="text-xl font-bold text-txt-primary">{greeting.headline}</h2>
+              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${greeting.badgeColor}`}>
+                {greeting.badge}
+              </span>
+            </div>
+            <p className="text-xs text-txt-secondary mt-1">
+              {greeting.subtitle}
+            </p>
+          </div>
+        </div>
+
+        {/* Safety KPIs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {safetyKPIs.slice(0, 4).map((kpi, idx) => {
+            const IconComp = kpi.icon;
+            return (
+              <div key={idx} className="bg-card-bg border border-border-custom rounded-2xl p-5 shadow-premium flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-txt-secondary tracking-wider">{kpi.title}</span>
+                  <h3 className="text-xl font-bold text-txt-primary mt-1.5">{kpi.value}</h3>
+                  <span className="text-[10px] text-brand-success font-semibold mt-1 block">Active monitoring</span>
+                </div>
+                <div className="p-3 bg-brand-primary/10 text-brand-primary rounded-xl">
+                  <IconComp className="w-5 h-5" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Safety Widgets */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Widget 1: CDL Expiry Tracker */}
+          <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-4">
+              Driver License Compliance Monitoring
+            </h3>
+            
+            <div className="space-y-3.5">
+              {expiredDrivers.length === 0 && nearExpiryDrivers.length === 0 ? (
+                <div className="text-center py-8 text-xs text-txt-secondary">
+                  All active CDLs fully compliant. No expirations flagged.
+                </div>
+              ) : (
+                <>
+                  {expiredDrivers.map((d, idx) => (
+                    <div key={`exp-${idx}`} className="p-3 bg-brand-danger/5 border border-brand-danger/15 rounded-2xl flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-bold text-txt-primary">{d.name}</h4>
+                        <span className="text-[10px] text-brand-danger font-mono font-bold uppercase">Expired CDL License</span>
+                      </div>
+                      <span className="text-xs font-bold text-brand-danger">{d.licenseNumber}</span>
+                    </div>
+                  ))}
+                  {nearExpiryDrivers.map((d, idx) => (
+                    <div key={`near-${idx}`} className="p-3 bg-brand-warning/5 border border-brand-warning/15 rounded-2xl flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-bold text-txt-primary">{d.name}</h4>
+                        <span className="text-[10px] text-brand-warning font-semibold">CDL Expires soon</span>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-txt-primary">
+                        {new Date(d.licenseExpiryDate).toISOString().split('T')[0]}
+                      </span>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Widget 2: Driver Safety Rankings */}
+          <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-4">
+              Driver Safety & compliance scores
+            </h3>
+
+            <div className="space-y-4">
+              {topSafeDrivers.length > 0 ? (
+                topSafeDrivers.map((d, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span className="text-txt-primary">{d.name}</span>
+                      <span className="text-brand-success font-bold">{d.safetyScore}% Safety Score</span>
+                    </div>
+                    <div className="w-full bg-surface/50 rounded-full h-1.5">
+                      <div 
+                        className="bg-brand-success h-1.5 rounded-full"
+                        style={{ width: `${d.safetyScore}%` }}
+                      />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-txt-secondary text-xs">
+                  No drivers registered in the safe-scoring ledger.
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (roleName === 'Financial Analyst') {
+    const financialKPIs = kpis.filter(k => k.title !== 'Drivers Active' && k.title !== 'Maintenance Due');
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-6 max-w-full font-sans"
+      >
+        {/* Hero Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card-bg border border-border-custom p-6 rounded-[20px] shadow-premium">
+          <div>
+            <div className="flex items-center gap-2.5 mb-1">
+              <h2 className="text-xl font-bold text-txt-primary">{greeting.headline}</h2>
+              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${greeting.badgeColor}`}>
+                {greeting.badge}
+              </span>
+            </div>
+            <p className="text-xs text-txt-secondary mt-1">
+              {greeting.subtitle}
+            </p>
+          </div>
+        </div>
+
+        {/* Financial KPIs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {financialKPIs.slice(0, 4).map((kpi, idx) => {
+            const IconComp = kpi.icon;
+            return (
+              <div key={idx} className="bg-card-bg border border-border-custom rounded-2xl p-5 shadow-premium flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-txt-secondary tracking-wider">{kpi.title}</span>
+                  <h3 className="text-xl font-bold text-txt-primary mt-1.5">{kpi.value}</h3>
+                  <span className="text-[10px] text-brand-success font-semibold mt-1 block">Financial tracking</span>
+                </div>
+                <div className="p-3 bg-brand-primary/10 text-brand-primary rounded-xl">
+                  <IconComp className="w-5 h-5" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Operational Expense timeline / overview */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
+            <div className="flex justify-between items-center border-b border-border-custom/50 pb-3">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-txt-secondary">Operations Expense</h4>
+                <p className="text-sm font-bold text-txt-primary mt-0.5">Fuel Consumption Summary</p>
+              </div>
+            </div>
+            <div className="h-60 w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={fuelUsageData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(100,116,139,0.1)" />
+                  <XAxis dataKey="day" stroke="#94A3B8" fontSize={9} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94A3B8" fontSize={9} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(100, 116, 139, 0.05)' }}
+                    contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-custom)', borderRadius: '12px', fontSize: '11px' }}
+                  />
+                  <Bar dataKey="usage" fill="#06B6D4" radius={[6, 6, 0, 0]} barSize={28} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium flex flex-col justify-between">
+            <div className="flex justify-between items-center border-b border-border-custom/50 pb-3">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-txt-secondary">Dispatch timeline</h4>
+                <p className="text-sm font-bold text-txt-primary mt-0.5">Active Dispatch Load</p>
+              </div>
+            </div>
+            <div className="h-60 w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={timelineData}>
+                  <defs>
+                    <linearGradient id="colorTripsFin" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#1677FF" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#1677FF" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(100,116,139,0.1)" />
+                  <XAxis dataKey="hour" stroke="#94A3B8" fontSize={9} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94A3B8" fontSize={9} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-custom)', borderRadius: '12px', fontSize: '11px', color: 'var(--txt-primary)' }}
+                  />
+                  <Area type="monotone" dataKey="trips" stroke="#1677FF" strokeWidth={2.5} fillOpacity={1} fill="url(#colorTripsFin)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
