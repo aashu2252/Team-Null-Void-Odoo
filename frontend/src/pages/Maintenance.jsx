@@ -74,10 +74,12 @@ export default function Maintenance() {
       console.warn('Backend offline — retaining local maintenance registry.');
     }
   };
-  loadData();
-}, []);
 
-const handleCreateWorkOrder = async (e) => {
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleCreateWorkOrder = async (e) => {
   e.preventDefault();
   if (!newWorkOrder.title || !newWorkOrder.cost || !newWorkOrder.startDate) {
     toast.error('Please enter all required fields.');

@@ -15,6 +15,14 @@ const availableColumns = [
 
 export default function Drivers() {
   const [drivers, setDrivers] = useState([]);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [visibleColumns, setVisibleColumns] = useState(['driver', 'contact', 'status']);
+  const [showColumnToggle, setShowColumnToggle] = useState(false);
+  const columnToggleRef = useRef(null);
 
   // Fetch drivers from backend database on mount
   useEffect(() => {
