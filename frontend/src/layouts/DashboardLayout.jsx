@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import usePermissions from '../hooks/usePermissions';
 import AIAssistant from '../components/AIAssistant';
 import {
   LayoutDashboard,
@@ -53,47 +54,29 @@ export default function DashboardLayout() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const menuSections = [
-    {
-      title: 'General',
-      items: [
-        { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard }
-      ]
-    },
-    {
-      title: 'Fleet & Personnel',
-      items: [
-        { name: 'Vehicles', path: '/dashboard/vehicles', icon: Truck },
-        { name: 'Drivers', path: '/dashboard/drivers', icon: Users },
-        { name: 'Trips', path: '/dashboard/trips', icon: Route }
-      ]
-    },
-    {
-      title: 'Operations',
-      items: [
-        { name: 'Maintenance', path: '/dashboard/maintenance', icon: Wrench },
-        { name: 'Fuel Logs', path: '/dashboard/fuel-logs', icon: Fuel },
-        { name: 'Expenses', path: '/dashboard/expenses', icon: CreditCard }
-      ]
-    },
-    {
-      title: 'Analytics & Admin',
-      items: [
-        { name: 'Reports', path: '/dashboard/reports', icon: FileBarChart },
-        { name: 'Settings', path: '/dashboard/settings', icon: Settings }
-      ]
-    }
+  const { hasPermission } = usePermissions();
+
+  const allMenuItems = [
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, requiredPermission: 'dashboard.view' },
+    { name: 'Fleet', path: '/dashboard/vehicles', icon: Truck, requiredPermission: 'vehicle.view' },
+    { name: 'Drivers', path: '/dashboard/drivers', icon: Users, requiredPermission: 'driver.view' },
+    { name: 'Trips', path: '/dashboard/trips', icon: Route, requiredPermission: 'trip.view' },
+    { name: 'Maintenance', path: '/dashboard/maintenance', icon: Wrench, requiredPermission: 'maintenance.view' },
+    { name: 'Fuel & Expenses', path: '/dashboard/expenses', icon: Fuel, requiredPermission: 'expense.view' },
+    { name: 'Analytics', path: '/dashboard/reports', icon: FileBarChart, requiredPermission: 'dashboard.view' },
+    { name: 'Settings', path: '/dashboard/settings', icon: Settings, requiredPermission: '*' } // Only super admins for now or add a specific setting permission
   ];
+
+  const menuItems = allMenuItems.filter(item => hasPermission(item.requiredPermission) || hasPermission('*'));
 
   const commandPaletteItems = [
     { name: 'Go to Dashboard', shortcut: 'G + D', action: () => navigate('/dashboard') },
-    { name: 'View Vehicles', shortcut: 'G + V', action: () => navigate('/dashboard/vehicles') },
+    { name: 'View Fleet', shortcut: 'G + F', action: () => navigate('/dashboard/vehicles') },
     { name: 'View Drivers', shortcut: 'G + DR', action: () => navigate('/dashboard/drivers') },
     { name: 'Dispatch New Trip', shortcut: 'G + T', action: () => navigate('/dashboard/trips') },
-    { name: 'Check Maintenance Status', shortcut: 'G + M', action: () => navigate('/dashboard/maintenance') },
-    { name: 'Check Fuel Logs', shortcut: 'G + F', action: () => navigate('/dashboard/fuel-logs') },
-    { name: 'Check Expenses', shortcut: 'G + E', action: () => navigate('/dashboard/expenses') },
-    { name: 'Generate Reports', shortcut: 'G + R', action: () => navigate('/dashboard/reports') },
+    { name: 'Check Maintenance', shortcut: 'G + M', action: () => navigate('/dashboard/maintenance') },
+    { name: 'Check Fuel & Expenses', shortcut: 'G + E', action: () => navigate('/dashboard/expenses') },
+    { name: 'View Analytics', shortcut: 'G + A', action: () => navigate('/dashboard/reports') },
     { name: 'Settings Center', shortcut: 'G + S', action: () => navigate('/dashboard/settings') },
     { name: 'Toggle Dark/Light Theme', shortcut: 'T + T', action: () => toggleTheme() },
   ];
@@ -132,44 +115,33 @@ export default function DashboardLayout() {
             </div>
           </div>
 
-          {/* Menu Sections */}
-          <div className="space-y-6">
-            {menuSections.map((section, secIdx) => (
-              <div key={secIdx} className="space-y-1.5">
-                {!collapsed && (
-                  <p className="text-[10px] font-bold text-txt-muted uppercase tracking-widest px-3">
-                    {section.title}
-                  </p>
-                )}
-                <div className="space-y-0.5">
-                  {section.items.map((item, itemIdx) => {
-                    const IconComponent = item.icon;
-                    const isActive = location.pathname === item.path;
-                    return (
-                      <Link
-                        key={itemIdx}
-                        to={item.path}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 relative ${isActive
-                            ? 'bg-brand-primary/10 text-brand-primary font-semibold'
-                            : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
-                          }`}
-                        title={collapsed ? item.name : undefined}
-                      >
-                        {isActive && (
-                          <motion.div
-                            layoutId="activeIndicator"
-                            className="absolute left-0 w-1 h-6 bg-brand-primary rounded-r-md"
-                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                          />
-                        )}
-                        <IconComponent className={`w-5 h-5 shrink-0 ${isActive ? 'text-brand-primary' : 'text-txt-secondary'}`} />
-                        {!collapsed && <span className="text-xs">{item.name}</span>}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+          {/* Menu Items */}
+          <div className="space-y-1.5">
+            {menuItems.map((item, itemIdx) => {
+              const IconComponent = item.icon;
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={itemIdx}
+                  to={item.path}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 relative ${isActive
+                      ? 'bg-brand-primary/10 text-brand-primary font-semibold'
+                      : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
+                    }`}
+                  title={collapsed ? item.name : undefined}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeIndicator"
+                      className="absolute left-0 w-1 h-6 bg-brand-primary rounded-r-md"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  <IconComponent className={`w-5 h-5 shrink-0 ${isActive ? 'text-brand-primary' : 'text-txt-secondary'}`} />
+                  {!collapsed && <span className="text-sm font-medium">{item.name}</span>}
+                </Link>
+              );
+            })}
           </div>
         </div>
 
@@ -250,6 +222,15 @@ export default function DashboardLayout() {
           </div>
 
           <div className="flex items-center gap-6">
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-xl text-txt-secondary hover:text-txt-primary hover:bg-surface transition-colors focus:outline-none"
+              title={`Switch to ${isDark ? 'light' : 'dark'} theme`}
+            >
+              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+
             {/* User credentials */}
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-cyan-400 text-sm shadow-inner">
@@ -368,34 +349,25 @@ export default function DashboardLayout() {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-6">
-                {menuSections.map((section, secIdx) => (
-                  <div key={secIdx} className="space-y-1.5">
-                    <p className="text-[9px] font-bold text-txt-muted uppercase tracking-widest px-2">
-                      {section.title}
-                    </p>
-                    <div className="space-y-0.5">
-                      {section.items.map((item, itemIdx) => {
-                        const IconComponent = item.icon;
-                        const isActive = location.pathname === item.path;
-                        return (
-                          <Link
-                            key={itemIdx}
-                            to={item.path}
-                            onClick={() => setMobileMenuOpen(false)}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 ${isActive
-                                ? 'bg-brand-primary/10 text-brand-primary font-semibold'
-                                : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
-                              }`}
-                          >
-                            <IconComponent className={`w-5 h-5 ${isActive ? 'text-brand-primary' : 'text-txt-secondary'}`} />
-                            <span className="text-xs">{item.name}</span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+              <div className="flex-1 overflow-y-auto space-y-1.5 mt-4">
+                {menuItems.map((item, itemIdx) => {
+                  const IconComponent = item.icon;
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={itemIdx}
+                      to={item.path}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 ${isActive
+                          ? 'bg-brand-primary/10 text-brand-primary font-semibold'
+                          : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
+                        }`}
+                    >
+                      <IconComponent className={`w-5 h-5 ${isActive ? 'text-brand-primary' : 'text-txt-secondary'}`} />
+                      <span className="text-xs font-medium">{item.name}</span>
+                    </Link>
+                  );
+                })}
               </div>
 
               <div className="pt-4 border-t border-border-custom">

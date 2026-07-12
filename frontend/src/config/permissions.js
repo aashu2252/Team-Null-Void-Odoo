@@ -6,7 +6,7 @@ export const MODULES = [
     ]
   },
   {
-    moduleName: 'Vehicles',
+    moduleName: 'Fleet',
     permissions: [
       { name: 'View Vehicles', code: 'vehicle.view' },
       { name: 'Create Vehicle', code: 'vehicle.create' },
@@ -54,10 +54,24 @@ export const MODULES = [
     ]
   },
   {
-    moduleName: 'Admin Panel',
+    moduleName: 'Analytics',
+    permissions: [
+      { name: 'View Analytics', code: 'analytics.view' },
+      { name: 'Generate Reports', code: 'analytics.reports' }
+    ]
+  },
+  {
+    moduleName: 'Settings',
     permissions: [
       { name: 'Manage Users', code: 'admin.users' },
-      { name: 'Manage Roles', code: 'admin.roles' }
+      { name: 'Manage Roles', code: 'admin.roles' },
+      { name: 'Manage Settings', code: 'admin.settings' }
+    ]
+  },
+  {
+    moduleName: 'Compliance',
+    permissions: [
+      { name: 'View Compliance', code: 'compliance.view' },
     ]
   }
 ];
