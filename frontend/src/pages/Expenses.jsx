@@ -8,7 +8,9 @@ import {
   AlertTriangle,
   CheckCircle,
   FileText,
-  DollarSign
+  DollarSign,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { toast } from 'react-hot-toast';
@@ -28,6 +30,8 @@ export default function Expenses() {
   ];
 
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingExpense, setEditingExpense] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [vehicleRefs, setVehicleRefs] = useState([]);
   const [tripRefs, setTripRefs] = useState([]);
   const [newExpense, setNewExpense] = useState({
@@ -39,45 +43,57 @@ export default function Expenses() {
     date: ''
   });
 
-  // Load expenses and dropdown refs from backend on mount
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [expRes, vehiclesRes, tripsRes] = await Promise.all([
-          api.get('/api/expenses'),
-          api.get('/api/vehicles'),
-          api.get('/api/trips')
-        ]);
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [expRes, vehiclesRes, tripsRes] = await Promise.all([
+        api.get('/api/expenses?limit=100'),
+        api.get('/api/vehicles?limit=100'),
+        api.get('/api/trips?limit=100')
+      ]);
 
-        if (expRes.data?.success && expRes.data.data.length > 0) {
-          const mapped = expRes.data.data.map(e => ({
-            ...e,
-            id: e.id || e._id,
-            vehicle: e.vehicle?.registrationNumber || e.vehicle || 'N/A',
-            trip: e.trip?.id || e.trip || 'N/A',
-            type: e.type || e.category || 'Other',
-            status: e.status || 'Pending Approval'
-          }));
-          setExpenses(mapped);
-        }
-
-        if (vehiclesRes.data?.success) {
-          setVehicleRefs(vehiclesRes.data.data.map(v => ({
-            _id: v._id,
-            label: `${v.registrationNumber} — ${v.vehicleName}`
-          })));
-        }
-
-        if (tripsRes.data?.success) {
-          setTripRefs(tripsRes.data.data.map(t => ({
-            _id: t._id,
-            label: `${t.id || t._id.slice(-6)} (${t.source} → ${t.destination})`
-          })));
-        }
-      } catch (err) {
-        console.warn('Backend offline — retaining local expense ledger.');
+      if (expRes.data?.success) {
+        const expensesData = Array.isArray(expRes.data.data)
+          ? expRes.data.data
+          : expRes.data.data?.expenses || [];
+        const mapped = expensesData.map(e => ({
+          ...e,
+          id: e.id || e._id,
+          vehicle: e.vehicle?.registrationNumber || e.vehicle || 'N/A',
+          trip: e.trip?.id || e.trip || 'N/A',
+          type: e.type || e.category || 'Other',
+          status: e.status || 'Pending Approval'
+        }));
+        setExpenses(mapped);
       }
-    };
+
+      if (vehiclesRes.data?.success) {
+        const vehiclesData = Array.isArray(vehiclesRes.data.data)
+          ? vehiclesRes.data.data
+          : vehiclesRes.data.data?.vehicles || [];
+        setVehicleRefs(vehiclesData.map(v => ({
+          _id: v._id,
+          label: `${v.registrationNumber} — ${v.vehicleName}`
+        })));
+      }
+
+      if (tripsRes.data?.success) {
+        const tripsData = Array.isArray(tripsRes.data.data)
+          ? tripsRes.data.data
+          : tripsRes.data.data?.trips || [];
+        setTripRefs(tripsData.map(t => ({
+          _id: t._id,
+          label: `${t.id || t._id.slice(-6)} (${t.source} → ${t.destination})`
+        })));
+      }
+    } catch (err) {
+      console.warn('Backend offline — retaining local expense ledger.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadData();
   }, []);
 
@@ -98,39 +114,55 @@ export default function Expenses() {
     };
 
     try {
-      const res = await api.post('/api/expenses', payload);
-      if (res.data?.success) {
-        const saved = res.data.data;
+      if (editingExpense) {
+        const res = await api.put(`/api/expenses/${editingExpense._id}`, payload);
+        if (res.data?.success) {
+          toast.success('Expense updated successfully!', {
+            style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+          });
+          loadData();
+        }
+      } else {
+        const res = await api.post('/api/expenses', payload);
+        if (res.data?.success) {
+          toast.success('Expense saved to database!', {
+            style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+          });
+          loadData();
+        }
+      }
+    } catch (err) {
+      console.warn('Backend write failed — updating locally.', err);
+      if (editingExpense) {
+        setExpenses(prev => prev.map(e => e.id === editingExpense.id ? {
+          ...e,
+          ...newExpense,
+          amount: parseFloat(newExpense.amount),
+          vehicle: vehicleRefs.find(v => v._id === newExpense.vehicleId)?.label || newExpense.vehicleId || 'N/A',
+          trip: tripRefs.find(t => t._id === newExpense.tripId)?.label || newExpense.tripId || 'N/A',
+        } : e));
+        toast.success(`Expense updated locally (offline mode).`, {
+          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+        });
+      } else {
+        const createdId = 'EXP-40' + (expenses.length + 1);
         const entry = {
-          ...saved,
-          id: saved.id || saved._id,
+          ...newExpense,
+          id: createdId,
+          amount: parseFloat(newExpense.amount),
           vehicle: vehicleRefs.find(v => v._id === newExpense.vehicleId)?.label || newExpense.vehicleId || 'N/A',
           trip: tripRefs.find(t => t._id === newExpense.tripId)?.label || newExpense.tripId || 'N/A',
           status: 'Pending Approval'
         };
         setExpenses(prev => [entry, ...prev]);
-        toast.success('Expense saved to database!', {
+        toast.success(`Expense ${createdId} added locally (offline mode).`, {
           style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
         });
       }
-    } catch (err) {
-      console.warn('Backend write failed — saving expense locally.', err);
-      const createdId = 'EXP-40' + (expenses.length + 1);
-      const entry = {
-        ...newExpense,
-        id: createdId,
-        amount: parseFloat(newExpense.amount),
-        vehicle: vehicleRefs.find(v => v._id === newExpense.vehicleId)?.label || newExpense.vehicleId || 'N/A',
-        trip: tripRefs.find(t => t._id === newExpense.tripId)?.label || newExpense.tripId || 'N/A',
-        status: 'Pending Approval'
-      };
-      setExpenses(prev => [entry, ...prev]);
-      toast.success(`Expense ${createdId} added locally (offline mode).`, {
-        style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-      });
     }
 
     setShowAddForm(false);
+    setEditingExpense(null);
     setNewExpense({
       description: '',
       type: 'Toll',
@@ -139,6 +171,46 @@ export default function Expenses() {
       tripId: '',
       date: ''
     });
+  };
+
+  const handleEditExpense = (exp) => {
+    setEditingExpense(exp);
+    let formattedDate = '';
+    if (exp.date) {
+      formattedDate = new Date(exp.date).toISOString().split('T')[0];
+    }
+    setNewExpense({
+      description: exp.description || '',
+      type: exp.type || 'Toll',
+      amount: exp.amount || '',
+      vehicleId: exp.vehicle?._id || exp.vehicleId || (vehicleRefs.find(v => v._id === exp.vehicle || v.label.startsWith(exp.vehicle))?._id) || '',
+      tripId: exp.trip?._id || exp.tripId || (tripRefs.find(t => t._id === exp.trip || t.label.startsWith(exp.trip))?._id) || '',
+      date: formattedDate
+    });
+    setShowAddForm(true);
+  };
+
+  const handleDeleteExpense = async (exp) => {
+    if (window.confirm(`Are you sure you want to delete expense ${exp.id || 'this expense'}?`)) {
+      try {
+        if (exp._id) {
+          const res = await api.delete(`/api/expenses/${exp._id}`);
+          if (res.data?.success) {
+            toast.success('Expense deleted successfully!', {
+              style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+            });
+            loadData();
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to delete expense from database. Removing locally.', err);
+      }
+      setExpenses(prev => prev.filter(e => e.id !== exp.id));
+      toast.success(`Expense removed locally.`, {
+        style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+      });
+    }
   };
 
   return (
@@ -170,7 +242,9 @@ export default function Expenses() {
             >
               <div className="flex items-center gap-2 border-b border-border-custom/50 pb-2.5 mb-4">
                 <CreditCard className="w-5 h-5 text-brand-primary" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-txt-primary">Add Expense Invoice</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-txt-primary">
+                  {editingExpense ? 'Edit Expense Invoice' : 'Add Expense Invoice'}
+                </h3>
               </div>
 
               <form onSubmit={handleAddExpense} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -284,8 +358,19 @@ export default function Expenses() {
                 <div className="sm:col-span-3 flex justify-end gap-2 pt-2 border-t border-border-custom mt-2">
                   <button
                     type="button"
-                    onClick={() => setShowAddForm(false)}
-                    className="px-4 py-2 bg-surface text-txt-primary border border-border-custom rounded-xl text-xs font-semibold cursor-pointer"
+                    onClick={() => {
+                      setShowAddForm(false);
+                      setEditingExpense(null);
+                      setNewExpense({
+                        description: '',
+                        type: 'Toll',
+                        amount: '',
+                        vehicleId: '',
+                        tripId: '',
+                        date: ''
+                      });
+                    }}
+                    className="px-4.5 py-2 bg-surface text-txt-primary border border-border-custom rounded-xl text-xs font-semibold cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -293,7 +378,7 @@ export default function Expenses() {
                     type="submit"
                     className="px-4 py-2 bg-brand-primary text-white rounded-xl text-xs font-semibold shadow-md shadow-brand-primary/10 hover:bg-brand-primary/95 cursor-pointer"
                   >
-                    File Expense
+                    {editingExpense ? 'Update Expense' : 'File Expense'}
                   </button>
                 </div>
               </form>
@@ -331,40 +416,65 @@ export default function Expenses() {
             </h3>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="text-txt-muted text-[10px] uppercase font-bold tracking-wider border-b border-border-custom/50 pb-2">
-                    <th className="pb-3">Expense ID</th>
-                    <th className="pb-3">Description</th>
-                    <th className="pb-3">Type</th>
-                    <th className="pb-3">Date</th>
-                    <th className="pb-3">Vehicle</th>
-                    <th className="pb-3">Trip Link</th>
-                    <th className="pb-3 text-right">Amount</th>
-                    <th className="pb-3 text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-custom/50">
-                  {expenses.map((exp) => (
-                    <tr key={exp.id} className="hover:bg-surface/30 transition-colors">
-                      <td className="py-3.5 font-bold text-txt-primary">{exp.id}</td>
-                      <td className="py-3.5 font-semibold text-txt-primary">{exp.description}</td>
-                      <td className="py-3.5 text-txt-secondary">{exp.type}</td>
-                      <td className="py-3.5 text-txt-secondary font-mono">{exp.date}</td>
-                      <td className="py-3.5 font-mono text-brand-primary font-semibold">{exp.vehicle}</td>
-                      <td className="py-3.5 font-mono text-txt-secondary">{exp.trip}</td>
-                      <td className="py-3.5 text-right font-mono font-bold text-txt-primary">${exp.amount.toLocaleString()}</td>
-                      <td className="py-3.5 text-center">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          exp.status === 'Cleared' ? 'bg-brand-success/10 text-brand-success' : 'bg-brand-warning/10 text-brand-warning animate-pulse'
-                        }`}>
-                          {exp.status}
-                        </span>
-                      </td>
+              {isLoading ? (
+                <div className="py-8 text-center text-txt-secondary">Loading expenses...</div>
+              ) : (
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="text-txt-muted text-[10px] uppercase font-bold tracking-wider border-b border-border-custom/50 pb-2">
+                      <th className="pb-3">Expense ID</th>
+                      <th className="pb-3">Description</th>
+                      <th className="pb-3">Type</th>
+                      <th className="pb-3">Date</th>
+                      <th className="pb-3">Vehicle</th>
+                      <th className="pb-3">Trip Link</th>
+                      <th className="pb-3 text-right">Amount</th>
+                      <th className="pb-3 text-center">Status</th>
+                      <th className="pb-3 text-center">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-border-custom/50">
+                    {expenses.map((exp) => (
+                      <tr key={exp.id} className="hover:bg-surface/30 transition-colors">
+                        <td className="py-3.5 font-bold text-txt-primary">{exp.id}</td>
+                        <td className="py-3.5 font-semibold text-txt-primary">{exp.description}</td>
+                        <td className="py-3.5 text-txt-secondary">{exp.type}</td>
+                        <td className="py-3.5 text-txt-secondary font-mono">
+                          {exp.date ? new Date(exp.date).toISOString().split('T')[0] : 'N/A'}
+                        </td>
+                        <td className="py-3.5 font-mono text-brand-primary font-semibold">{exp.vehicle}</td>
+                        <td className="py-3.5 font-mono text-txt-secondary">{exp.trip}</td>
+                        <td className="py-3.5 text-right font-mono font-bold text-txt-primary">${exp.amount ? exp.amount.toLocaleString() : '0'}</td>
+                        <td className="py-3.5 text-center">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            exp.status === 'Cleared' ? 'bg-brand-success/10 text-brand-success' : 'bg-brand-warning/10 text-brand-warning'
+                          }`}>
+                            {exp.status}
+                          </span>
+                        </td>
+                        <td className="py-3.5 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEditExpense(exp)}
+                              className="p-1 hover:bg-surface rounded text-brand-primary transition-colors cursor-pointer"
+                              title="Edit"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteExpense(exp)}
+                              className="p-1 hover:bg-surface rounded text-brand-danger transition-colors cursor-pointer"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>

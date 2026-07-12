@@ -11,7 +11,9 @@ import {
   FileText,
   Calendar,
   Truck,
-  Droplet
+  Droplet,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'react-hot-toast';
@@ -35,6 +37,8 @@ export default function FuelLogs() {
   ];
 
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingLog, setEditingLog] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [vehicleRefs, setVehicleRefs] = useState([]);
   const [tripRefs, setTripRefs] = useState([]);
   const [newFuelEntry, setNewFuelEntry] = useState({
@@ -46,45 +50,57 @@ export default function FuelLogs() {
     date: ''
   });
 
-  // Load fuel logs and dropdown refs from backend on mount
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [logsRes, vehiclesRes, tripsRes] = await Promise.all([
-          api.get('/api/fuel-logs'),
-          api.get('/api/vehicles'),
-          api.get('/api/trips')
-        ]);
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [logsRes, vehiclesRes, tripsRes] = await Promise.all([
+        api.get('/api/fuel-logs?limit=100'),
+        api.get('/api/vehicles?limit=100'),
+        api.get('/api/trips?limit=100')
+      ]);
 
-        if (logsRes.data?.success && logsRes.data.data.length > 0) {
-          const mapped = logsRes.data.data.map(l => ({
-            ...l,
-            id: l.id || l._id,
-            vehicle: l.vehicle?.registrationNumber || l.vehicle || 'N/A',
-            trip: l.trip?.id || l.trip || 'N/A',
-            driver: l.driver || 'N/A',
-            lpk: l.lpk || 'N/A'
-          }));
-          setLogs(mapped);
-        }
-
-        if (vehiclesRes.data?.success) {
-          setVehicleRefs(vehiclesRes.data.data.map(v => ({
-            _id: v._id,
-            label: `${v.registrationNumber} — ${v.vehicleName}`
-          })));
-        }
-
-        if (tripsRes.data?.success) {
-          setTripRefs(tripsRes.data.data.map(t => ({
-            _id: t._id,
-            label: `${t.id || t._id.slice(-6)} (${t.source} → ${t.destination})`
-          })));
-        }
-      } catch (err) {
-        console.warn('Backend offline — retaining local fuel log registry.');
+      if (logsRes.data?.success) {
+        const logsData = Array.isArray(logsRes.data.data)
+          ? logsRes.data.data
+          : logsRes.data.data?.fuelLogs || [];
+        const mapped = logsData.map(l => ({
+          ...l,
+          id: l.id || l._id,
+          vehicle: l.vehicle?.registrationNumber || l.vehicle || 'N/A',
+          trip: l.trip?.id || l.trip || 'N/A',
+          driver: l.driver || 'N/A',
+          lpk: l.lpk || 'N/A'
+        }));
+        setLogs(mapped);
       }
-    };
+
+      if (vehiclesRes.data?.success) {
+        const vehiclesData = Array.isArray(vehiclesRes.data.data)
+          ? vehiclesRes.data.data
+          : vehiclesRes.data.data?.vehicles || [];
+        setVehicleRefs(vehiclesData.map(v => ({
+          _id: v._id,
+          label: `${v.registrationNumber} — ${v.vehicleName}`
+        })));
+      }
+
+      if (tripsRes.data?.success) {
+        const tripsData = Array.isArray(tripsRes.data.data)
+          ? tripsRes.data.data
+          : tripsRes.data.data?.trips || [];
+        setTripRefs(tripsData.map(t => ({
+          _id: t._id,
+          label: `${t.id || t._id.slice(-6)} (${t.source} → ${t.destination})`
+        })));
+      }
+    } catch (err) {
+      console.warn('Backend offline — retaining local fuel log registry.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadData();
   }, []);
 
@@ -105,42 +121,58 @@ export default function FuelLogs() {
     };
 
     try {
-      const res = await api.post('/api/fuel-logs', payload);
-      if (res.data?.success) {
-        const saved = res.data.data;
-        const entry = {
-          ...saved,
-          id: saved.id || saved._id,
+      if (editingLog) {
+        const res = await api.put(`/api/fuel-logs/${editingLog._id}`, payload);
+        if (res.data?.success) {
+          toast.success(`Refuel log updated successfully!`, {
+            style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+          });
+          loadData();
+        }
+      } else {
+        const res = await api.post('/api/fuel-logs', payload);
+        if (res.data?.success) {
+          toast.success(`Refuel log saved to database!`, {
+            style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+          });
+          loadData();
+        }
+      }
+    } catch (err) {
+      console.warn('Backend write failed — updating locally.', err);
+      if (editingLog) {
+        setLogs(prev => prev.map(l => l.id === editingLog.id ? {
+          ...l,
+          ...newFuelEntry,
+          liters: parseFloat(newFuelEntry.liters),
+          cost: parseFloat(newFuelEntry.cost),
           vehicle: vehicleRefs.find(v => v._id === newFuelEntry.vehicleId)?.label || newFuelEntry.vehicleId || 'N/A',
           trip: tripRefs.find(t => t._id === newFuelEntry.tripId)?.label || newFuelEntry.tripId || 'N/A',
-          driver: 'System',
-          lpk: 'Calculating...'
+        } : l));
+        toast.success(`Refuel Log updated locally (offline mode)!`, {
+          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+        });
+      } else {
+        const createdId = 'FL-20' + (logs.length + 1);
+        const entry = {
+          ...newFuelEntry,
+          id: createdId,
+          liters: parseFloat(newFuelEntry.liters),
+          cost: parseFloat(newFuelEntry.cost),
+          vehicle: vehicleRefs.find(v => v._id === newFuelEntry.vehicleId)?.label || newFuelEntry.vehicleId || 'N/A',
+          trip: tripRefs.find(t => t._id === newFuelEntry.tripId)?.label || newFuelEntry.tripId || 'N/A',
+          driver: 'David Miller',
+          lpk: '12.4 L/100km'
         };
         setLogs(prev => [entry, ...prev]);
-        toast.success(`Refuel log saved to database!`, {
+        toast.success(`Refuel Log ${createdId} logged locally (offline mode)!`, {
           style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
         });
       }
-    } catch (err) {
-      console.warn('Backend write failed — saving fuel log locally.', err);
-      const createdId = 'FL-20' + (logs.length + 1);
-      const entry = {
-        ...newFuelEntry,
-        id: createdId,
-        liters: parseFloat(newFuelEntry.liters),
-        cost: parseFloat(newFuelEntry.cost),
-        vehicle: vehicleRefs.find(v => v._id === newFuelEntry.vehicleId)?.label || newFuelEntry.vehicleId || 'N/A',
-        trip: tripRefs.find(t => t._id === newFuelEntry.tripId)?.label || newFuelEntry.tripId || 'N/A',
-        driver: 'David Miller',
-        lpk: '12.4 L/100km'
-      };
-      setLogs(prev => [entry, ...prev]);
-      toast.success(`Refuel Log ${createdId} logged locally (offline mode)!`, {
-        style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-      });
     }
 
     setShowAddForm(false);
+    setEditingLog(null);
     setNewFuelEntry({
       vehicleId: '',
       tripId: '',
@@ -149,6 +181,46 @@ export default function FuelLogs() {
       location: '',
       date: ''
     });
+  };
+
+  const handleEditFuelLog = (log) => {
+    setEditingLog(log);
+    let formattedDate = '';
+    if (log.date) {
+      formattedDate = new Date(log.date).toISOString().split('T')[0];
+    }
+    setNewFuelEntry({
+      vehicleId: log.vehicle?._id || log.vehicleId || (vehicleRefs.find(v => v._id === log.vehicle || v.label.startsWith(log.vehicle))?._id) || '',
+      tripId: log.trip?._id || log.tripId || (tripRefs.find(t => t._id === log.trip || t.label.startsWith(log.trip))?._id) || '',
+      liters: log.liters || '',
+      cost: log.cost || '',
+      location: log.location || '',
+      date: formattedDate
+    });
+    setShowAddForm(true);
+  };
+
+  const handleDeleteFuelLog = async (log) => {
+    if (window.confirm(`Are you sure you want to delete refuel log ${log.id || 'this log'}?`)) {
+      try {
+        if (log._id) {
+          const res = await api.delete(`/api/fuel-logs/${log._id}`);
+          if (res.data?.success) {
+            toast.success('Fuel log deleted successfully!', {
+              style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+            });
+            loadData();
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to delete fuel log from database. Removing locally.', err);
+      }
+      setLogs(prev => prev.filter(l => l.id !== log.id));
+      toast.success(`Refuel Log removed locally.`, {
+        style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+      });
+    }
   };
 
   return (
@@ -180,7 +252,9 @@ export default function FuelLogs() {
             >
               <div className="flex items-center gap-2 border-b border-border-custom/50 pb-2.5 mb-4">
                 <Fuel className="w-5 h-5 text-brand-primary" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-txt-primary">Log Fuel Refill</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-txt-primary">
+                  {editingLog ? 'Edit Fuel Refill' : 'Log Fuel Refill'}
+                </h3>
               </div>
 
               <form onSubmit={handleAddFuelLog} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -291,7 +365,18 @@ export default function FuelLogs() {
                 <div className="sm:col-span-3 flex justify-end gap-2 pt-2 border-t border-border-custom mt-2">
                   <button
                     type="button"
-                    onClick={() => setShowAddForm(false)}
+                    onClick={() => {
+                      setShowAddForm(false);
+                      setEditingLog(null);
+                      setNewFuelEntry({
+                        vehicleId: '',
+                        tripId: '',
+                        liters: '',
+                        cost: '',
+                        location: '',
+                        date: ''
+                      });
+                    }}
                     className="px-4.5 py-2 bg-surface text-txt-primary border border-border-custom rounded-xl text-xs font-semibold cursor-pointer"
                   >
                     Cancel
@@ -300,7 +385,7 @@ export default function FuelLogs() {
                     type="submit"
                     className="px-4.5 py-2 bg-brand-primary text-white rounded-xl text-xs font-semibold shadow-md shadow-brand-primary/10 hover:bg-brand-primary/95 cursor-pointer"
                   >
-                    Save Fuel Log
+                    {editingLog ? 'Update Fuel Log' : 'Save Fuel Log'}
                   </button>
                 </div>
               </form>
@@ -339,36 +424,61 @@ export default function FuelLogs() {
             </h3>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="text-txt-muted text-[10px] uppercase font-bold tracking-wider border-b border-border-custom/50 pb-2">
-                    <th className="pb-3">Refuel ID</th>
-                    <th className="pb-3">Vehicle</th>
-                    <th className="pb-3">Trip Link</th>
-                    <th className="pb-3">Date</th>
-                    <th className="pb-3">Driver</th>
-                    <th className="pb-3 text-right">Liters</th>
-                    <th className="pb-3 text-right">Cost</th>
-                    <th className="pb-3 text-right">Efficiency</th>
-                    <th className="pb-3 pl-4">Location Station</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-custom/50">
-                  {logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-surface/30 transition-colors">
-                      <td className="py-3.5 font-bold text-txt-primary">{log.id}</td>
-                      <td className="py-3.5 font-semibold text-brand-primary">{log.vehicle}</td>
-                      <td className="py-3.5 font-mono text-txt-secondary">{log.trip}</td>
-                      <td className="py-3.5 text-txt-secondary font-mono">{log.date}</td>
-                      <td className="py-3.5 font-medium text-txt-primary">{log.driver}</td>
-                      <td className="py-3.5 text-right font-mono font-bold">{log.liters || log.gallons} L</td>
-                      <td className="py-3.5 text-right font-mono font-bold text-txt-primary">${log.cost.toLocaleString()}</td>
-                      <td className="py-3.5 text-right font-semibold text-brand-teal">{log.lpk}</td>
-                      <td className="py-3.5 pl-4 text-txt-secondary">{log.location}</td>
+              {isLoading ? (
+                <div className="py-8 text-center text-txt-secondary">Loading fuel logs...</div>
+              ) : (
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="text-txt-muted text-[10px] uppercase font-bold tracking-wider border-b border-border-custom/50 pb-2">
+                      <th className="pb-3">Refuel ID</th>
+                      <th className="pb-3">Vehicle</th>
+                      <th className="pb-3">Trip Link</th>
+                      <th className="pb-3">Date</th>
+                      <th className="pb-3">Driver</th>
+                      <th className="pb-3 text-right">Liters</th>
+                      <th className="pb-3 text-right">Cost</th>
+                      <th className="pb-3 text-right">Efficiency</th>
+                      <th className="pb-3 pl-4">Location Station</th>
+                      <th className="pb-3 text-center">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-border-custom/50">
+                    {logs.map((log) => (
+                      <tr key={log.id} className="hover:bg-surface/30 transition-colors">
+                        <td className="py-3.5 font-bold text-txt-primary">{log.id}</td>
+                        <td className="py-3.5 font-semibold text-brand-primary">{log.vehicle}</td>
+                        <td className="py-3.5 font-mono text-txt-secondary">{log.trip}</td>
+                        <td className="py-3.5 text-txt-secondary font-mono">
+                          {log.date ? new Date(log.date).toISOString().split('T')[0] : 'N/A'}
+                        </td>
+                        <td className="py-3.5 font-medium text-txt-primary">{log.driver}</td>
+                        <td className="py-3.5 text-right font-mono font-bold">{log.liters || log.gallons} L</td>
+                        <td className="py-3.5 text-right font-mono font-bold text-txt-primary">${log.cost ? log.cost.toLocaleString() : '0'}</td>
+                        <td className="py-3.5 text-right font-semibold text-brand-teal">{log.lpk}</td>
+                        <td className="py-3.5 pl-4 text-txt-secondary">{log.location}</td>
+                        <td className="py-3.5 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEditFuelLog(log)}
+                              className="p-1 hover:bg-surface rounded text-brand-primary transition-colors cursor-pointer"
+                              title="Edit"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteFuelLog(log)}
+                              className="p-1 hover:bg-surface rounded text-brand-danger transition-colors cursor-pointer"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>
