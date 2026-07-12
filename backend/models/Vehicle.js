@@ -49,6 +49,27 @@ const vehicleSchema = new mongoose.Schema({
       message: '{VALUE} is not a valid status'
     },
     default: 'Available'
+  },
+  fuel: {
+    type: Number,
+    default: 100,
+    min: [0, 'Fuel cannot be negative'],
+    max: [100, 'Fuel cannot be more than 100']
+  },
+  health: {
+    type: Number,
+    default: 100,
+    min: [0, 'Health cannot be negative'],
+    max: [100, 'Health cannot be more than 100']
+  },
+  driver: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Driver',
+    default: null
+  },
+  image: {
+    type: String,
+    default: ''
   }
 }, {
   timestamps: true

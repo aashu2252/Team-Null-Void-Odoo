@@ -126,8 +126,39 @@ const login = async (req, res, next) => {
     next(error);
   }
 };
+// @desc    Get current logged in user
+// @route   GET /api/auth/me
+// @access  Private
+const getMe = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id || req.user._id).populate('role');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        mobile: user.mobile,
+        address: user.address,
+        profilePicture: user.profilePicture,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 module.exports = {
   register,
-  login
+  login,
+  getMe
 };

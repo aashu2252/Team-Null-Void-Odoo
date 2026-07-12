@@ -4,7 +4,11 @@ import Login from '../pages/Login';
 import Register from '../pages/Register';
 import Dashboard from '../pages/Dashboard';
 import Vehicles from '../pages/Vehicles';
+import VehicleForm from '../pages/VehicleForm';
+import VehicleDetails from '../pages/VehicleDetails';
 import Drivers from '../pages/Drivers';
+import DriverForm from '../pages/DriverForm';
+import DriverDetails from '../pages/DriverDetails';
 import Trips from '../pages/Trips';
 import Maintenance from '../pages/Maintenance';
 import FuelLogs from '../pages/FuelLogs';
@@ -35,7 +39,13 @@ export default function AppRoutes() {
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/dashboard/vehicles" element={<Vehicles />} />
+          <Route path="/dashboard/vehicles/create" element={<VehicleForm />} />
+          <Route path="/dashboard/vehicles/:id" element={<VehicleDetails />} />
+          <Route path="/dashboard/vehicles/:id/edit" element={<VehicleForm />} />
           <Route path="/dashboard/drivers" element={<Drivers />} />
+          <Route path="/dashboard/drivers/create" element={<DriverForm />} />
+          <Route path="/dashboard/drivers/:id" element={<DriverDetails />} />
+          <Route path="/dashboard/drivers/:id/edit" element={<DriverForm />} />
           <Route path="/dashboard/trips" element={<Trips />} />
           <Route path="/dashboard/maintenance" element={<Maintenance />} />
           <Route path="/dashboard/fuel-logs" element={<FuelLogs />} />

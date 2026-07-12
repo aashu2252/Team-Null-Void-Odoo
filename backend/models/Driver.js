@@ -1,11 +1,7 @@
 const mongoose = require('mongoose');
 
 const driverSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, 'Name is required'],
-    trim: true
-  },
+
   licenseNumber: {
     type: String,
     required: [true, 'License number is required'],
@@ -21,11 +17,7 @@ const driverSchema = new mongoose.Schema({
     type: Date,
     required: [true, 'License expiry date is required']
   },
-  contactNumber: {
-    type: String,
-    required: [true, 'Contact number is required'],
-    trim: true
-  },
+
   safetyScore: {
     type: Number,
     default: 100,

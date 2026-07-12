@@ -12,6 +12,7 @@ const tripRoutes = require('./routes/trip.routes');
 const maintenanceRoutes = require('./routes/maintenance.routes');
 const fuelLogRoutes = require('./routes/fuelLog.routes');
 const expenseRoutes = require('./routes/expense.routes');
+const uploadRoutes = require('./routes/upload.routes');
 const errorHandler = require('./middleware/error.middleware');
 const setupSwagger = require('./config/swagger');
 
@@ -37,6 +38,7 @@ app.use('/api/trips', tripRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/fuel-logs', fuelLogRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Root Status Route
 app.get('/api/status', (req, res) => {

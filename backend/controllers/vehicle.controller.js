@@ -15,7 +15,11 @@ const createVehicle = async (req, res) => {
       maxLoadCapacity,
       odometer,
       acquisitionCost,
-      status
+      status,
+      fuel,
+      health,
+      driver,
+      image
     } = req.body;
 
     // Check required fields
@@ -44,7 +48,11 @@ const createVehicle = async (req, res) => {
       maxLoadCapacity,
       odometer,
       acquisitionCost,
-      status
+      status,
+      fuel,
+      health,
+      driver: driver || null,
+      image: image || ''
     });
 
     return res.status(201).json({
@@ -106,6 +114,10 @@ const getAllVehicles = async (req, res) => {
 
     const total = await Vehicle.countDocuments(query);
     const vehicles = await Vehicle.find(query)
+      .populate({
+        path: 'driver',
+        populate: { path: 'user', select: 'firstName lastName email role' }
+      })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -146,7 +158,10 @@ const getVehicleById = async (req, res) => {
       });
     }
 
-    const vehicle = await Vehicle.findById(id);
+    const vehicle = await Vehicle.findById(id).populate({
+      path: 'driver',
+      populate: { path: 'user', select: 'firstName lastName email role' }
+    });
     if (!vehicle) {
       return res.status(404).json({
         success: false,
@@ -191,7 +206,11 @@ const updateVehicle = async (req, res) => {
       maxLoadCapacity,
       odometer,
       acquisitionCost,
-      status
+      status,
+      fuel,
+      health,
+      driver,
+      image
     } = req.body;
 
     // If registration number is provided, check for uniqueness among other vehicles
@@ -226,6 +245,10 @@ const updateVehicle = async (req, res) => {
     if (odometer !== undefined) vehicle.odometer = odometer;
     if (acquisitionCost !== undefined) vehicle.acquisitionCost = acquisitionCost;
     if (status !== undefined) vehicle.status = status;
+    if (fuel !== undefined) vehicle.fuel = fuel;
+    if (health !== undefined) vehicle.health = health;
+    if (driver !== undefined) vehicle.driver = driver || null;
+    if (image !== undefined) vehicle.image = image;
 
     const updatedVehicle = await vehicle.save();
 

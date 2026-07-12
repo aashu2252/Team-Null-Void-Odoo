@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import usePermissions from '../hooks/usePermissions';
 import AIAssistant from '../components/AIAssistant';
+import logofull from '../assets/logofull.png';
 import {
   LayoutDashboard,
   Truck,
@@ -100,16 +101,12 @@ export default function DashboardLayout() {
         <div className="flex flex-col flex-1 overflow-y-auto px-4 py-6">
           {/* Logo Header */}
           <div className="flex items-center gap-3 mb-8 px-2 select-none justify-between">
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/dashboard')}>
-              <div className="h-10 w-10 min-w-[40px] rounded-xl bg-gradient-to-tr from-brand-primary to-brand-teal flex items-center justify-center shadow-lg shadow-brand-primary/25">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              {!collapsed && (
-                <div>
-                  <h1 className="text-md font-bold tracking-tight text-txt-primary">
-                    TransitOps
-                  </h1>
-                  <p className="text-[10px] text-brand-teal font-bold uppercase tracking-wider">Console Center</p>
+            <div className="flex items-center cursor-pointer" onClick={() => navigate('/dashboard')}>
+              {!collapsed ? (
+                <img src={logofull} alt="TransitOps Logo" className="h-8 object-contain" />
+              ) : (
+                <div className="h-10 w-10 min-w-[40px] rounded-xl bg-gradient-to-tr from-brand-primary to-brand-teal flex items-center justify-center shadow-lg shadow-brand-primary/25">
+                  <Sparkles className="w-5 h-5 text-white" />
                 </div>
               )}
             </div>
@@ -306,10 +303,7 @@ export default function DashboardLayout() {
             >
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-brand-primary to-brand-teal flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-white" />
-                  </div>
-                  <h1 className="text-sm font-bold text-txt-primary">TransitOps</h1>
+                  <img src={logofull} alt="TransitOps Logo" className="h-8 object-contain" />
                 </div>
                 <button
                   onClick={() => setMobileMenuOpen(false)}

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login } = require('../controllers/auth.controller');
+const { register, login, getMe } = require('../controllers/auth.controller');
 const validate = require('../middleware/validate.middleware');
 const { registerSchema, loginSchema } = require('../validations/auth.validation');
 const { protect } = require('../middleware/auth.middleware');
@@ -94,5 +94,20 @@ router.get('/profile-test', protect, (req, res) => {
     }
   });
 });
+/**
+ * @swagger
+ * /api/auth/me:
+ *   get:
+ *     summary: Get current logged-in user
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/me', protect, getMe);
 
 module.exports = router;
