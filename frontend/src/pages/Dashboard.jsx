@@ -139,7 +139,7 @@ export default function Dashboard() {
             Today is Sunday, July 12, 2026. Here is your operational telemetry snapshot.
           </p>
         </div>
-        
+
         {/* Weather & Quick Actions */}
         <div className="flex items-center gap-4 flex-wrap">
           {/* Weather Widget */}
@@ -153,12 +153,13 @@ export default function Dashboard() {
 
           {/* Quick Actions */}
           <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1.5 px-3.5 py-2 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-semibold shadow-md shadow-brand-primary/10 transition-all active:scale-95 cursor-pointer">
-              <Zap className="w-3.5 h-3.5" />
+            <button className="flex items-center justify-center gap-2 h-10 w-40 rounded-lg bg-brand-primary text-white font-medium hover:bg-brand-primary/90 transition-all">
+              <Zap className="w-4 h-4" />
               <span>Optimize Routes</span>
             </button>
-            <button className="flex items-center gap-1.5 px-3.5 py-2 bg-surface border border-border-custom text-txt-primary rounded-xl text-xs font-semibold hover:bg-surface/80 transition-all active:scale-95 cursor-pointer">
-              <Play className="w-3.5 h-3.5" />
+
+            <button className="flex items-center justify-center gap-2 h-10 w-40 rounded-lg border border-border-custom bg-surface text-txt-primary font-medium hover:bg-surface/80 transition-all">
+              <Play className="w-4 h-4" />
               <span>Dispatch Trip</span>
             </button>
           </div>
@@ -186,7 +187,7 @@ export default function Dashboard() {
                 <h3 className="text-xl font-bold text-txt-primary tracking-tight leading-none">
                   {kpi.value}
                 </h3>
-                
+
                 <div className="flex items-center justify-between mt-2.5">
                   <div className="flex items-center gap-0.5">
                     {kpi.trendUp ? (
@@ -222,7 +223,7 @@ export default function Dashboard() {
 
       {/* OPERATIONS COMMAND CENTER INTERACTIVE WIDGETS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Widget 1: Today's Trip Timeline (Area Chart) */}
         <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium flex flex-col justify-between">
           <div className="flex justify-between items-center border-b border-border-custom/50 pb-3">
@@ -232,14 +233,14 @@ export default function Dashboard() {
             </div>
             <span className="text-[10px] bg-brand-primary/10 text-brand-primary px-2.5 py-1 rounded-lg font-bold">LIVE LOAD</span>
           </div>
-          
+
           <div className="h-60 w-full mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={timelineData}>
                 <defs>
                   <linearGradient id="colorTrips" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#1677FF" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#1677FF" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#1677FF" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#1677FF" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(100,116,139,0.1)" />
@@ -286,7 +287,7 @@ export default function Dashboard() {
                 />
               </PieChart>
             </ResponsiveContainer>
-            
+
             <div className="absolute text-center">
               <p className="text-3xl font-extrabold text-txt-primary tracking-tight">128</p>
               <p className="text-[10px] text-txt-secondary font-semibold uppercase tracking-wider">Total Fleet</p>
@@ -336,7 +337,7 @@ export default function Dashboard() {
 
       {/* LOWER GRID: ALERTS, AI INSIGHTS, TIMELINE ACTIVITY */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        
+
         {/* Operations Alerts Feed */}
         <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
           <div className="flex justify-between items-center border-b border-border-custom/50 pb-3 mb-4">
@@ -422,9 +423,9 @@ export default function Dashboard() {
           </div>
 
           <div className="pt-4 mt-4 border-t border-border-custom flex justify-end">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary rounded-xl text-xs font-semibold transition-colors cursor-pointer">
+            <button className="flex items-center justify-center gap-2 h-10 px-5 bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary rounded-xl text-xs font-semibold transition-all cursor-pointer">
               <span>View full AI audit logs</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
+              <ArrowUpRight className="w-4 h-4" />
             </button>
           </div>
         </div>
