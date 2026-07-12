@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import {
   TrendingUp,
@@ -124,6 +125,61 @@ export default function Dashboard() {
     }
   ];
 
+  // ── Role-aware greeting ──────────────────────────────────────────────────
+  const { user } = useAuth();
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    const salutation = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+
+    const name = user?.fullName || user?.name || 'Operator';
+    const role = user?.role || 'Operator';
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    const roleConfig = {
+      'Dispatcher': {
+        headline: `${salutation}, ${name} — Dispatch Hub`,
+        subtitle: `${dateStr}. Today's dispatch queue and route assignments are ready for review.`,
+        badge: '🚦 Active Dispatcher',
+        badgeColor: 'bg-brand-primary/10 text-brand-primary border-brand-primary/20'
+      },
+      'Fleet Manager': {
+        headline: `${salutation}, ${name} — Fleet Command`,
+        subtitle: `${dateStr}. Fleet telemetry, vehicle health, and operational KPIs are live.`,
+        badge: '🚛 Fleet Manager',
+        badgeColor: 'bg-brand-teal/10 text-brand-teal border-brand-teal/20'
+      },
+      'Safety Officer': {
+        headline: `${salutation}, ${name} — Safety Center`,
+        subtitle: `${dateStr}. Compliance status, incident flags, and safety scores are up to date.`,
+        badge: '🛡️ Safety Officer',
+        badgeColor: 'bg-brand-success/10 text-brand-success border-brand-success/20'
+      },
+      'Financial Analyst': {
+        headline: `${salutation}, ${name} — Finance Desk`,
+        subtitle: `${dateStr}. Expense ledger, fuel costs, and revenue analytics are ready.`,
+        badge: '💰 Financial Analyst',
+        badgeColor: 'bg-brand-warning/10 text-brand-warning border-brand-warning/20'
+      },
+      'Driver': {
+        headline: `${salutation}, ${name} — Driver Portal`,
+        subtitle: `${dateStr}. Your active trip manifest and route details are displayed below.`,
+        badge: '🚗 Driver',
+        badgeColor: 'bg-brand-orange/10 text-brand-orange border-brand-orange/20'
+      }
+    };
+
+    return roleConfig[role] || {
+      headline: `${salutation}, ${name}`,
+      subtitle: `${dateStr}. Here is your operational telemetry snapshot.`,
+      badge: `⚙️ ${role}`,
+      badgeColor: 'bg-surface text-txt-secondary border-border-custom'
+    };
+  }, [user]);
+  // ────────────────────────────────────────────────────────────────────────
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
@@ -134,9 +190,14 @@ export default function Dashboard() {
       {/* HERO SECTION / HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card-bg border border-border-custom p-6 rounded-[20px] shadow-premium">
         <div>
-          <h2 className="text-xl font-bold text-txt-primary">Welcome Back, Lead Dispatcher</h2>
+          <div className="flex items-center gap-2.5 mb-1">
+            <h2 className="text-xl font-bold text-txt-primary">{greeting.headline}</h2>
+            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${greeting.badgeColor} hidden sm:inline-flex items-center`}>
+              {greeting.badge}
+            </span>
+          </div>
           <p className="text-xs text-txt-secondary mt-1">
-            Today is Sunday, July 12, 2026. Here is your operational telemetry snapshot.
+            {greeting.subtitle}
           </p>
         </div>
         
