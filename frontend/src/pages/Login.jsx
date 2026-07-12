@@ -52,10 +52,23 @@ export default function Login() {
 
       navigate('/dashboard');
     } catch (error) {
-      const serverMessage = error.response?.data?.message || 'Failed to connect to backend server. Please verify API server status.';
-      toast.error(serverMessage, {
-        style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-      });
+      // Server responded with an error (4xx/5xx) — show the server's own message
+      if (error.response) {
+        const serverMessage = error.response.data?.message || 'Invalid credentials. Please try again.';
+        toast.error(serverMessage, {
+          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+        });
+      } else if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+        // Backend is completely offline / unreachable
+        toast.error('Backend server is offline. Please start the API server on port 5000.', {
+          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+        });
+      } else {
+        // Timeout or unknown
+        toast.error(error.message || 'An unexpected error occurred. Please try again.', {
+          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+        });
+      }
     } finally {
       setSubmitting(false);
     }
