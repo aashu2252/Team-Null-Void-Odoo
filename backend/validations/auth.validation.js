@@ -10,7 +10,7 @@ const registerSchema = z.object({
   password: z.string({
     required_error: 'Password is required'
   }).min(8, 'Password must be at least 8 characters long'),
-  role: z.enum(['Fleet Manager', 'Dispatcher', 'Safety Officer', 'Financial Analyst']).optional(),
+  role: z.enum(['Fleet Manager', 'Dispatcher', 'Safety Officer', 'Financial Analyst', 'Driver']).optional(),
   isActive: z.boolean().optional()
 });
 
