@@ -4,7 +4,8 @@ import {
   CreditCard,
   Plus,
   Edit,
-  Trash2
+  Trash2,
+  DollarSign
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { toast } from 'react-hot-toast';

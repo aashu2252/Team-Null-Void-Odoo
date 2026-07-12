@@ -16,7 +16,8 @@ import {
   Zap,
   Play,
   UserCheck,
-  ArrowUpRight
+  ArrowUpRight,
+  CheckCircle
 } from 'lucide-react';
 import {
   AreaChart,
