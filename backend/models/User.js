@@ -25,10 +25,6 @@ const userSchema = new mongoose.Schema({
   },
   profilePicture: {
     type: String,
-<<<<<<< HEAD
-    enum: ['Fleet Manager', 'Dispatcher', 'Safety Officer', 'Financial Analyst', 'Driver'],
-    default: 'Dispatcher'
-=======
     default: ''
   },
   mobile: {
@@ -45,7 +41,6 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Role',
     required: [true, 'Role is required']
->>>>>>> 506c8e1e90191fe376f102435d09e0d641ca0a37
   },
   isActive: {
     type: Boolean,

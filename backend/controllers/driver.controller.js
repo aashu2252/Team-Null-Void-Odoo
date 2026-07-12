@@ -35,7 +35,7 @@ const createDriver = async (req, res) => {
     }
 
     // Validate User exists
-    const existingUser = await User.findById(user);
+    const existingUser = await User.findById(user).populate('role');
     if (!existingUser) {
       return res.status(404).json({
         success: false,
@@ -44,7 +44,7 @@ const createDriver = async (req, res) => {
     }
 
     // Validate User role is "Driver"
-    if (existingUser.role !== 'Driver') {
+    if (!existingUser.role || existingUser.role.name !== 'Driver') {
       return res.status(400).json({
         success: false,
         message: 'Referenced User must have the role "Driver"'
@@ -248,7 +248,7 @@ const updateDriver = async (req, res) => {
       }
 
       // Check User exists
-      const existingUser = await User.findById(user);
+      const existingUser = await User.findById(user).populate('role');
       if (!existingUser) {
         return res.status(404).json({
           success: false,
@@ -257,7 +257,7 @@ const updateDriver = async (req, res) => {
       }
 
       // Check User role is "Driver"
-      if (existingUser.role !== 'Driver') {
+      if (!existingUser.role || existingUser.role.name !== 'Driver') {
         return res.status(400).json({
           success: false,
           message: 'Referenced User must have the role "Driver"'
