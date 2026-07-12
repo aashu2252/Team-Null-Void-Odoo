@@ -56,11 +56,11 @@ export default function Drivers() {
     return drivers.filter(d => {
       const name = d.user ? `${d.user.firstName} ${d.user.lastName}` : '';
       const email = d.user?.email || '';
-      
-      const matchSearch = name.toLowerCase().includes(search.toLowerCase()) || 
-                          email.toLowerCase().includes(search.toLowerCase()) ||
-                          d.licenseNumber.toLowerCase().includes(search.toLowerCase());
-      
+
+      const matchSearch = name.toLowerCase().includes(search.toLowerCase()) ||
+        email.toLowerCase().includes(search.toLowerCase()) ||
+        d.licenseNumber.toLowerCase().includes(search.toLowerCase());
+
       const matchStatus = statusFilter === 'All' || d.status === statusFilter;
       return matchSearch && matchStatus;
     });
@@ -127,7 +127,7 @@ export default function Drivers() {
   };
 
   const toggleColumn = (colId) => {
-    setVisibleColumns(prev => 
+    setVisibleColumns(prev =>
       prev.includes(colId) ? prev.filter(c => c !== colId) : [...prev, colId]
     );
   };

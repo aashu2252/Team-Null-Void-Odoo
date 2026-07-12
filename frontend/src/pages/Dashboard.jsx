@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 import {
   TrendingUp,
   TrendingDown,
@@ -15,9 +16,8 @@ import {
   Zap,
   Play,
   UserCheck,
-  CheckSquare,
-  ShieldCheck,
-  ArrowUpRight
+  ArrowUpRight,
+  CheckCircle
 } from 'lucide-react';
 import {
   AreaChart,
@@ -50,95 +50,262 @@ export default function Dashboard() {
     }
   };
 
-  const timelineData = [
-    { hour: '06:00', trips: 12 },
-    { hour: '08:00', trips: 28 },
-    { hour: '10:00', trips: 45 },
-    { hour: '12:00', trips: 52 },
-    { hour: '14:00', trips: 48 },
-    { hour: '16:00', trips: 36 },
-    { hour: '18:00', trips: 22 },
-    { hour: '20:00', trips: 14 },
-  ];
+  const [vehicles, setVehicles] = useState([]);
+  const [trips, setTrips] = useState([]);
+  const [drivers, setDrivers] = useState([]);
+  const [maintenance, setMaintenance] = useState([]);
+  const [fuelLogs, setFuelLogs] = useState([]);
+  
+  const [selectedType, setSelectedType] = useState('All');
+  const [selectedStatus, setSelectedStatus] = useState('All');
+  const [selectedRegion, setSelectedRegion] = useState('All');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const fuelUsageData = [
-    { day: 'Mon', usage: 1100 },
-    { day: 'Tue', usage: 1240 },
-    { day: 'Wed', usage: 980 },
-    { day: 'Thu', usage: 1050 },
-    { day: 'Fri', usage: 1300 },
-    { day: 'Sat', usage: 600 },
-    { day: 'Sun', usage: 450 },
-  ];
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [vehiclesRes, tripsRes, driversRes, maintRes, fuelRes] = await Promise.all([
+        api.get('/api/vehicles?limit=1000'),
+        api.get('/api/trips?limit=1000'),
+        api.get('/api/drivers?limit=1000'),
+        api.get('/api/maintenance?limit=1000'),
+        api.get('/api/fuel-logs?limit=1000')
+      ]);
 
-  const vehicleHealthData = [
-    { name: 'Optimal (Health 90%+)', value: 82, color: '#22C55E' },
-    { name: 'Monitor (Health 70%-90%)', value: 12, color: '#F97316' },
-    { name: 'Immediate Service', value: 6, color: '#EF4444' },
-  ];
-
-  const kpis = [
-    {
-      title: 'Fleet Available',
-      value: '112 / 128',
-      trend: '+4.2%',
-      trendUp: true,
-      sparkline: [{ v: 98 }, { v: 102 }, { v: 105 }, { v: 112 }],
-      color: 'from-brand-teal to-cyan-500',
-      accent: 'border-t-brand-teal',
-      icon: Truck
-    },
-    {
-      title: 'Trips Scheduled Today',
-      value: '84',
-      trend: '+12%',
-      trendUp: true,
-      sparkline: [{ v: 60 }, { v: 72 }, { v: 80 }, { v: 84 }],
-      color: 'from-brand-primary to-blue-500',
-      accent: 'border-t-brand-primary',
-      icon: Compass
-    },
-    {
-      title: 'Drivers Active',
-      value: '92',
-      trend: '+2.5%',
-      trendUp: true,
-      sparkline: [{ v: 88 }, { v: 90 }, { v: 91 }, { v: 92 }],
-      color: 'from-brand-success to-emerald-500',
-      accent: 'border-t-brand-success',
-      icon: Users
-    },
-    {
-      title: 'Pending Deliveries',
-      value: '19',
-      trend: '-8%',
-      trendUp: false,
-      sparkline: [{ v: 30 }, { v: 25 }, { v: 21 }, { v: 19 }],
-      color: 'from-brand-orange to-amber-500',
-      accent: 'border-t-brand-orange',
-      icon: Clock
-    },
-    {
-      title: 'Fuel Usage Today',
-      value: '1,240 Gal',
-      trend: '-3.1%',
-      trendUp: false,
-      sparkline: [{ v: 1400 }, { v: 1350 }, { v: 1300 }, { v: 1240 }],
-      color: 'from-brand-purple to-indigo-500',
-      accent: 'border-t-brand-purple',
-      icon: Fuel
-    },
-    {
-      title: 'Maintenance Due',
-      value: '10',
-      trend: 'Scheduled',
-      trendUp: true,
-      sparkline: [{ v: 6 }, { v: 8 }, { v: 9 }, { v: 10 }],
-      color: 'from-brand-danger to-rose-500',
-      accent: 'border-t-brand-danger',
-      icon: Wrench
+      if (vehiclesRes.data?.success) {
+        setVehicles(Array.isArray(vehiclesRes.data.data) ? vehiclesRes.data.data : vehiclesRes.data.data?.vehicles || []);
+      }
+      if (tripsRes.data?.success) {
+        setTrips(Array.isArray(tripsRes.data.data) ? tripsRes.data.data : tripsRes.data.data?.trips || []);
+      }
+      if (driversRes.data?.success) {
+        setDrivers(Array.isArray(driversRes.data.data) ? driversRes.data.data : driversRes.data.data?.drivers || []);
+      }
+      if (maintRes.data?.success) {
+        setMaintenance(Array.isArray(maintRes.data.data) ? maintRes.data.data : maintRes.data.data?.maintenance || []);
+      }
+      if (fuelRes.data?.success) {
+        setFuelLogs(Array.isArray(fuelRes.data.data) ? fuelRes.data.data : fuelRes.data.data?.fuelLogs || []);
+      }
+    } catch (err) {
+      console.warn('Failed to hydrate dashboard telemetry from backend APIs.', err);
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // Filtered dataset calculations
+  const filteredVehicles = useMemo(() => {
+    return vehicles.filter(v => {
+      const matchType = selectedType === 'All' || v.type?.toLowerCase() === selectedType.toLowerCase();
+      const matchStatus = selectedStatus === 'All' || v.status?.toLowerCase() === selectedStatus.toLowerCase();
+      const matchRegion = selectedRegion === 'All' || v.region?.toLowerCase() === selectedRegion.toLowerCase();
+      return matchType && matchStatus && matchRegion;
+    });
+  }, [vehicles, selectedType, selectedStatus, selectedRegion]);
+
+  const filteredTrips = useMemo(() => {
+    return trips.filter(t => {
+      const vId = t.vehicle?._id || t.vehicle;
+      const vehicleObj = vehicles.find(v => v._id === vId);
+      if (!vehicleObj) return true; // keep it if no vehicle context (or all)
+      const matchType = selectedType === 'All' || vehicleObj.type?.toLowerCase() === selectedType.toLowerCase();
+      const matchStatus = selectedStatus === 'All' || vehicleObj.status?.toLowerCase() === selectedStatus.toLowerCase();
+      const matchRegion = selectedRegion === 'All' || vehicleObj.region?.toLowerCase() === selectedRegion.toLowerCase();
+      return matchType && matchStatus && matchRegion;
+    });
+  }, [trips, vehicles, selectedType, selectedStatus, selectedRegion]);
+
+  const filteredDrivers = useMemo(() => {
+    if (selectedType === 'All' && selectedStatus === 'All' && selectedRegion === 'All') {
+      return drivers;
+    }
+    const matchedVehicleIds = new Set(filteredVehicles.map(v => v._id));
+    const matchedDriverIds = new Set(
+      filteredTrips
+        .filter(t => matchedVehicleIds.has(t.vehicle?._id || t.vehicle))
+        .map(t => t.driver?._id || t.driver)
+    );
+    return drivers.filter(d => matchedDriverIds.has(d._id));
+  }, [drivers, filteredVehicles, filteredTrips, selectedType, selectedStatus, selectedRegion]);
+
+  const filteredFuelLogs = useMemo(() => {
+    const matchedVehicleIds = new Set(filteredVehicles.map(v => v._id));
+    return fuelLogs.filter(f => matchedVehicleIds.has(f.vehicle?._id || f.vehicle));
+  }, [fuelLogs, filteredVehicles]);
+
+  const filteredMaintenance = useMemo(() => {
+    const matchedVehicleIds = new Set(filteredVehicles.map(v => v._id));
+    return maintenance.filter(m => matchedVehicleIds.has(m.vehicle?._id || m.vehicle));
+  }, [maintenance, filteredVehicles]);
+
+  const calculatedKPIs = useMemo(() => {
+    const totalVehiclesCount = filteredVehicles.length;
+    const availableCount = filteredVehicles.filter(v => v.status === 'Available').length;
+    const activeTripsCount = filteredTrips.filter(t => t.status === 'Active' || t.status === 'In Transit').length;
+    const pendingTripsCount = filteredTrips.filter(t => t.status === 'Pending' || t.status === 'Scheduled').length;
+    const driversActiveCount = filteredDrivers.filter(d => d.status === 'On Duty' || d.status === 'Active' || d.status === 'On Trip').length;
+    const totalFuelGallons = filteredFuelLogs.reduce((sum, f) => sum + (f.liters || f.gallons || 0), 0);
+    const activeMaintenance = filteredMaintenance.filter(m => m.status === 'Active' || m.status === 'Pending').length;
+
+    const baseVal = Math.round(totalVehiclesCount * 0.9);
+    const sparkAvailable = [{ v: baseVal - 4 }, { v: baseVal - 2 }, { v: baseVal }, { v: availableCount }];
+    const sparkTrips = [{ v: activeTripsCount + pendingTripsCount - 15 }, { v: activeTripsCount + pendingTripsCount - 10 }, { v: activeTripsCount + pendingTripsCount - 5 }, { v: activeTripsCount + pendingTripsCount }];
+    const sparkDrivers = [{ v: driversActiveCount - 3 }, { v: driversActiveCount - 2 }, { v: driversActiveCount - 1 }, { v: driversActiveCount }];
+    const sparkPending = [{ v: pendingTripsCount + 4 }, { v: pendingTripsCount + 2 }, { v: pendingTripsCount + 1 }, { v: pendingTripsCount }];
+    const sparkFuel = [{ v: Math.round(totalFuelGallons * 0.8) }, { v: Math.round(totalFuelGallons * 0.9) }, { v: Math.round(totalFuelGallons * 0.95) }, { v: Math.round(totalFuelGallons) }];
+    const sparkMaint = [{ v: activeMaintenance + 3 }, { v: activeMaintenance + 2 }, { v: activeMaintenance + 1 }, { v: activeMaintenance }];
+
+    return [
+      {
+        title: 'Fleet Available',
+        value: `${availableCount} / ${totalVehiclesCount}`,
+        trend: totalVehiclesCount > 0 ? `+${Math.round((availableCount / totalVehiclesCount) * 100)}%` : '0%',
+        trendUp: true,
+        sparkline: sparkAvailable,
+        color: 'from-brand-teal to-cyan-500',
+        accent: 'border-t-brand-teal',
+        icon: Truck
+      },
+      {
+        title: 'Trips Scheduled Today',
+        value: (activeTripsCount + pendingTripsCount).toString(),
+        trend: '+12%',
+        trendUp: true,
+        sparkline: sparkTrips,
+        color: 'from-brand-primary to-blue-500',
+        accent: 'border-t-brand-primary',
+        icon: Compass
+      },
+      {
+        title: 'Drivers Active',
+        value: driversActiveCount.toString(),
+        trend: '+2.5%',
+        trendUp: true,
+        sparkline: sparkDrivers,
+        color: 'from-brand-success to-emerald-500',
+        accent: 'border-t-brand-success',
+        icon: Users
+      },
+      {
+        title: 'Pending Deliveries',
+        value: pendingTripsCount.toString(),
+        trend: '-8%',
+        trendUp: false,
+        sparkline: sparkPending,
+        color: 'from-brand-orange to-amber-500',
+        accent: 'border-t-brand-orange',
+        icon: Clock
+      },
+      {
+        title: 'Fuel Usage Today',
+        value: `${Math.round(totalFuelGallons).toLocaleString()} L`,
+        trend: '-3.1%',
+        trendUp: false,
+        sparkline: sparkFuel,
+        color: 'from-brand-purple to-indigo-500',
+        accent: 'border-t-brand-purple',
+        icon: Fuel
+      },
+      {
+        title: 'Maintenance Due',
+        value: activeMaintenance.toString(),
+        trend: 'Scheduled',
+        trendUp: true,
+        sparkline: sparkMaint,
+        color: 'from-brand-danger to-rose-500',
+        accent: 'border-t-brand-danger',
+        icon: Wrench
+      }
+    ];
+  }, [filteredVehicles, filteredTrips, filteredDrivers, filteredFuelLogs, filteredMaintenance]);
+
+  const kpis = calculatedKPIs;
+
+  const timelineData = useMemo(() => {
+    const totalCount = filteredTrips.length;
+    return [
+      { hour: '06:00', trips: Math.round(totalCount * 0.15) },
+      { hour: '08:00', trips: Math.round(totalCount * 0.35) },
+      { hour: '10:00', trips: Math.round(totalCount * 0.55) },
+      { hour: '12:00', trips: Math.round(totalCount * 0.65) },
+      { hour: '14:00', trips: Math.round(totalCount * 0.60) },
+      { hour: '16:00', trips: Math.round(totalCount * 0.45) },
+      { hour: '18:00', trips: Math.round(totalCount * 0.28) },
+      { hour: '20:00', trips: Math.round(totalCount * 0.18) },
+    ];
+  }, [filteredTrips]);
+
+  const vehicleHealthData = useMemo(() => {
+    const optimal = filteredVehicles.filter(v => v.status === 'Available' || v.status === 'On Trip').length;
+    const monitor = filteredVehicles.filter(v => v.status === 'Off Duty' || v.status === 'Suspended').length;
+    const service = filteredVehicles.filter(v => v.status === 'In Shop' || v.status === 'Maintenance').length;
+    return [
+      { name: 'Optimal (Active/Available)', value: optimal, color: '#22C55E' },
+      { name: 'Monitor (Off Duty/Standby)', value: monitor, color: '#F97316' },
+      { name: 'Immediate Service (In Shop)', value: service, color: '#EF4444' },
+    ];
+  }, [filteredVehicles]);
+
+  const fuelUsageData = useMemo(() => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const usageByDay = { 'Sun': 0, 'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0 };
+    filteredFuelLogs.forEach(f => {
+      if (f.date) {
+        const dayName = days[new Date(f.date).getDay()];
+        usageByDay[dayName] += f.liters || f.gallons || 0;
+      }
+    });
+    return Object.keys(usageByDay).map(day => ({
+      day,
+      usage: Math.round(usageByDay[day])
+    }));
+  }, [filteredFuelLogs]);
+
+  const dynamicAlerts = useMemo(() => {
+    const alertsList = [];
+    filteredMaintenance.slice(0, 3).forEach(m => {
+      alertsList.push({
+        type: 'maintenance',
+        title: `${m.vehicle?.registrationNumber || m.vehicleName || 'Asset'} Diagnostic Alert`,
+        description: `${m.title}: ${m.description || 'Routine diagnostics flagged.'}`,
+        time: 'Active status'
+      });
+    });
+    filteredTrips.filter(t => t.status === 'Delayed').slice(0, 2).forEach(t => {
+      alertsList.push({
+        type: 'delay',
+        title: `Trip ${t.id || t._id.slice(-6)} Delayed`,
+        description: `Route from ${t.source} to ${t.destination} is delayed.`,
+        time: 'In Transit'
+      });
+    });
+    if (alertsList.length === 0) {
+      return [
+        { type: 'info', title: 'System Diagnostics Optimal', description: 'All telemetry channels green. No diagnostic issues flagged.', time: 'Now' },
+        { type: 'info', title: 'Route Telemetry Optimal', description: 'VHF telemetry signals indicate all route ETAs match planned schedules.', time: 'Now' }
+      ];
+    }
+    return alertsList;
+  }, [filteredMaintenance, filteredTrips]);
+
+  const dynamicDeliveries = useMemo(() => {
+    const list = filteredTrips.filter(t => t.status === 'Scheduled' || t.status === 'Active').slice(0, 3);
+    if (list.length === 0) {
+      return [
+        { title: 'No scheduled cargo', time: '--:--', description: 'Create and dispatch trips in the Logistics console.' }
+      ];
+    }
+    return list.map(t => ({
+      title: `${t.id || t._id.slice(-6)} — ${t.destination}`,
+      time: t.startDate ? new Date(t.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending',
+      description: `Dispatched from ${t.source}. Status: ${t.status}.`
+    }));
+  }, [filteredTrips]);
 
   // ── Role-aware greeting ──────────────────────────────────────────────────
   const { user } = useAuth();
@@ -195,6 +362,444 @@ export default function Dashboard() {
   }, [user]);
   // ────────────────────────────────────────────────────────────────────────
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-3">
+          <svg className="animate-spin h-8 w-8 text-brand-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="text-xs text-txt-secondary font-semibold">Syncing Real-time Dashboard...</span>
+        </div>
+      </div>
+    );
+  }
+
+  const roleName = user?.role?.name || user?.role || 'Dispatcher';
+
+  if (roleName === 'Driver') {
+    const currentDriver = drivers.find(d => (d.user?._id || d.user) === user?._id);
+    const driverTrips = currentDriver ? trips.filter(t => (t.driver?._id || t.driver) === currentDriver._id) : [];
+    const activeTrip = driverTrips.find(t => t.status === 'Dispatched' || t.status === 'Active');
+    const vehicleObj = activeTrip ? vehicles.find(v => v._id === (activeTrip.vehicle?._id || activeTrip.vehicle)) : null;
+    const completedTrips = driverTrips.filter(t => t.status === 'Completed' || t.status === 'Cancelled');
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-6 max-w-full font-sans"
+      >
+        {/* Hero Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card-bg border border-border-custom p-6 rounded-[20px] shadow-premium">
+          <div>
+            <div className="flex items-center gap-2.5 mb-1">
+              <h2 className="text-xl font-bold text-txt-primary">{greeting.headline}</h2>
+              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${greeting.badgeColor}`}>
+                {greeting.badge}
+              </span>
+            </div>
+            <p className="text-xs text-txt-secondary mt-1">
+              {greeting.subtitle}
+            </p>
+          </div>
+        </div>
+
+        {/* DRIVER ACTIVE TELEMETRY */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Card 1: Active Trip Details */}
+          <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-4">
+              Active Trip Telemetry
+            </h3>
+
+            {activeTrip ? (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-brand-primary">{activeTrip.id || activeTrip._id.slice(-6)}</span>
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-brand-primary/10 text-brand-primary uppercase">
+                    {activeTrip.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-surface/50 border border-border-custom/50 rounded-xl">
+                    <span className="text-[9px] uppercase font-bold text-txt-secondary block">Source</span>
+                    <span className="text-xs font-bold text-txt-primary mt-0.5 block">{activeTrip.source}</span>
+                  </div>
+                  <div className="p-3 bg-surface/50 border border-border-custom/50 rounded-xl">
+                    <span className="text-[9px] uppercase font-bold text-txt-secondary block">Destination</span>
+                    <span className="text-xs font-bold text-txt-primary mt-0.5 block">{activeTrip.destination}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-[9px] font-bold text-txt-muted mb-1">
+                    <span>TRIP PROGRESS</span>
+                    <span>{activeTrip.progress || 50}%</span>
+                  </div>
+                  <div className="w-full bg-surface h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-brand-primary rounded-full"
+                      style={{ width: `${activeTrip.progress || 50}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
+                  <div>
+                    <span className="text-[9px] text-txt-muted uppercase font-bold block">Planned Distance</span>
+                    <span className="text-txt-primary">{activeTrip.plannedDistance} mi</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-txt-muted uppercase font-bold block">Cargo Weight</span>
+                    <span className="text-txt-primary">{activeTrip.cargoWeight.toLocaleString()} lbs</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-txt-secondary text-xs">
+                No active trip assigned. Enjoy your standby status!
+              </div>
+            )}
+          </div>
+
+          {/* Card 2: Assigned Vehicle Details */}
+          <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-4">
+              Assigned Vehicle Details
+            </h3>
+
+            {vehicleObj ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-brand-teal/10 rounded-xl flex items-center justify-center text-brand-teal">
+                    <Truck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-txt-primary">{vehicleObj.vehicleName}</h4>
+                    <span className="text-[10px] text-txt-muted font-mono">{vehicleObj.registrationNumber}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
+                  <div>
+                    <span className="text-[9px] text-txt-muted uppercase font-bold block">Model</span>
+                    <span className="text-txt-primary">{vehicleObj.model}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-txt-muted uppercase font-bold block">Current Odometer</span>
+                    <span className="text-txt-primary">{vehicleObj.odometer.toLocaleString()} mi</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-txt-muted uppercase font-bold block">Vehicle Type</span>
+                    <span className="text-txt-primary">{vehicleObj.type}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-txt-muted uppercase font-bold block">Telemetry Status</span>
+                    <span className="text-brand-success">Connected</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-txt-secondary text-xs">
+                No vehicle currently assigned.
+              </div>
+            )}
+          </div>
+
+        </div>
+
+        {/* Card 3: Trip History */}
+        <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-4">
+            Driver Trip History
+          </h3>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="text-txt-muted text-[10px] uppercase font-bold tracking-wider border-b border-border-custom/50 pb-2">
+                  <th className="pb-3">Trip ID</th>
+                  <th className="pb-3">Route</th>
+                  <th className="pb-3">Date</th>
+                  <th className="pb-3 text-right">Distance</th>
+                  <th className="pb-3 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-custom/50">
+                {completedTrips.length > 0 ? (
+                  completedTrips.map((t) => (
+                    <tr key={t.id || t._id} className="hover:bg-surface/30 transition-colors">
+                      <td className="py-3.5 font-bold text-txt-primary">{t.id || t._id.slice(-6)}</td>
+                      <td className="py-3.5 font-semibold text-txt-primary">
+                        {t.source} → {t.destination}
+                      </td>
+                      <td className="py-3.5 text-txt-secondary font-mono">
+                        {t.completionDate ? new Date(t.completionDate).toISOString().split('T')[0] : 'N/A'}
+                      </td>
+                      <td className="py-3.5 text-right font-mono text-txt-primary">
+                        {t.actualDistance || t.plannedDistance} mi
+                      </td>
+                      <td className="py-3.5 text-center">
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                          t.status === 'Completed' ? 'bg-brand-success/10 text-brand-success border-brand-success/20' : 'bg-brand-danger/10 text-brand-danger border-brand-danger/20'
+                        }`}>
+                          {t.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" className="text-center py-6 text-txt-secondary">
+                      No past trip history found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </motion.div>
+    );
+  }
+
+  if (roleName === 'Safety Officer') {
+    const safetyKPIs = kpis.filter(k => k.title !== 'Fuel Usage Today' && k.title !== 'Pending Deliveries');
+    const expiredDrivers = drivers.filter(d => d.licenseExpiryDate && new Date(d.licenseExpiryDate) < new Date());
+    const nearExpiryDrivers = drivers.filter(d => {
+      if (!d.licenseExpiryDate) return false;
+      const daysLeft = (new Date(d.licenseExpiryDate) - new Date()) / (1000 * 60 * 60 * 24);
+      return daysLeft > 0 && daysLeft <= 30;
+    });
+
+    const topSafeDrivers = [...drivers]
+      .sort((a, b) => b.safetyScore - a.safetyScore)
+      .slice(0, 5);
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-6 max-w-full font-sans"
+      >
+        {/* Hero Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card-bg border border-border-custom p-6 rounded-[20px] shadow-premium">
+          <div>
+            <div className="flex items-center gap-2.5 mb-1">
+              <h2 className="text-xl font-bold text-txt-primary">{greeting.headline}</h2>
+              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${greeting.badgeColor}`}>
+                {greeting.badge}
+              </span>
+            </div>
+            <p className="text-xs text-txt-secondary mt-1">
+              {greeting.subtitle}
+            </p>
+          </div>
+        </div>
+
+        {/* Safety KPIs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {safetyKPIs.slice(0, 4).map((kpi, idx) => {
+            const IconComp = kpi.icon;
+            return (
+              <div key={idx} className="bg-card-bg border border-border-custom rounded-2xl p-5 shadow-premium flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-txt-secondary tracking-wider">{kpi.title}</span>
+                  <h3 className="text-xl font-bold text-txt-primary mt-1.5">{kpi.value}</h3>
+                  <span className="text-[10px] text-brand-success font-semibold mt-1 block">Active monitoring</span>
+                </div>
+                <div className="p-3 bg-brand-primary/10 text-brand-primary rounded-xl">
+                  <IconComp className="w-5 h-5" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Safety Widgets */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Widget 1: CDL Expiry Tracker */}
+          <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-4">
+              Driver License Compliance Monitoring
+            </h3>
+            
+            <div className="space-y-3.5">
+              {expiredDrivers.length === 0 && nearExpiryDrivers.length === 0 ? (
+                <div className="text-center py-8 text-xs text-txt-secondary">
+                  All active CDLs fully compliant. No expirations flagged.
+                </div>
+              ) : (
+                <>
+                  {expiredDrivers.map((d, idx) => (
+                    <div key={`exp-${idx}`} className="p-3 bg-brand-danger/5 border border-brand-danger/15 rounded-2xl flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-bold text-txt-primary">{d.name}</h4>
+                        <span className="text-[10px] text-brand-danger font-mono font-bold uppercase">Expired CDL License</span>
+                      </div>
+                      <span className="text-xs font-bold text-brand-danger">{d.licenseNumber}</span>
+                    </div>
+                  ))}
+                  {nearExpiryDrivers.map((d, idx) => (
+                    <div key={`near-${idx}`} className="p-3 bg-brand-warning/5 border border-brand-warning/15 rounded-2xl flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-bold text-txt-primary">{d.name}</h4>
+                        <span className="text-[10px] text-brand-warning font-semibold">CDL Expires soon</span>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-txt-primary">
+                        {new Date(d.licenseExpiryDate).toISOString().split('T')[0]}
+                      </span>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Widget 2: Driver Safety Rankings */}
+          <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-4">
+              Driver Safety & compliance scores
+            </h3>
+
+            <div className="space-y-4">
+              {topSafeDrivers.length > 0 ? (
+                topSafeDrivers.map((d, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span className="text-txt-primary">{d.name}</span>
+                      <span className="text-brand-success font-bold">{d.safetyScore}% Safety Score</span>
+                    </div>
+                    <div className="w-full bg-surface/50 rounded-full h-1.5">
+                      <div 
+                        className="bg-brand-success h-1.5 rounded-full"
+                        style={{ width: `${d.safetyScore}%` }}
+                      />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-txt-secondary text-xs">
+                  No drivers registered in the safe-scoring ledger.
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (roleName === 'Financial Analyst') {
+    const financialKPIs = kpis.filter(k => k.title !== 'Drivers Active' && k.title !== 'Maintenance Due');
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-6 max-w-full font-sans"
+      >
+        {/* Hero Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card-bg border border-border-custom p-6 rounded-[20px] shadow-premium">
+          <div>
+            <div className="flex items-center gap-2.5 mb-1">
+              <h2 className="text-xl font-bold text-txt-primary">{greeting.headline}</h2>
+              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${greeting.badgeColor}`}>
+                {greeting.badge}
+              </span>
+            </div>
+            <p className="text-xs text-txt-secondary mt-1">
+              {greeting.subtitle}
+            </p>
+          </div>
+        </div>
+
+        {/* Financial KPIs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {financialKPIs.slice(0, 4).map((kpi, idx) => {
+            const IconComp = kpi.icon;
+            return (
+              <div key={idx} className="bg-card-bg border border-border-custom rounded-2xl p-5 shadow-premium flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-txt-secondary tracking-wider">{kpi.title}</span>
+                  <h3 className="text-xl font-bold text-txt-primary mt-1.5">{kpi.value}</h3>
+                  <span className="text-[10px] text-brand-success font-semibold mt-1 block">Financial tracking</span>
+                </div>
+                <div className="p-3 bg-brand-primary/10 text-brand-primary rounded-xl">
+                  <IconComp className="w-5 h-5" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Operational Expense timeline / overview */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
+            <div className="flex justify-between items-center border-b border-border-custom/50 pb-3">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-txt-secondary">Operations Expense</h4>
+                <p className="text-sm font-bold text-txt-primary mt-0.5">Fuel Consumption Summary</p>
+              </div>
+            </div>
+            <div className="h-60 w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={fuelUsageData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(100,116,139,0.1)" />
+                  <XAxis dataKey="day" stroke="#94A3B8" fontSize={9} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94A3B8" fontSize={9} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(100, 116, 139, 0.05)' }}
+                    contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-custom)', borderRadius: '12px', fontSize: '11px' }}
+                  />
+                  <Bar dataKey="usage" fill="#06B6D4" radius={[6, 6, 0, 0]} barSize={28} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium flex flex-col justify-between">
+            <div className="flex justify-between items-center border-b border-border-custom/50 pb-3">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-txt-secondary">Dispatch timeline</h4>
+                <p className="text-sm font-bold text-txt-primary mt-0.5">Active Dispatch Load</p>
+              </div>
+            </div>
+            <div className="h-60 w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={timelineData}>
+                  <defs>
+                    <linearGradient id="colorTripsFin" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#1677FF" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#1677FF" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(100,116,139,0.1)" />
+                  <XAxis dataKey="hour" stroke="#94A3B8" fontSize={9} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94A3B8" fontSize={9} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-custom)', borderRadius: '12px', fontSize: '11px', color: 'var(--txt-primary)' }}
+                  />
+                  <Area type="monotone" dataKey="trips" stroke="#1677FF" strokeWidth={2.5} fillOpacity={1} fill="url(#colorTripsFin)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
@@ -238,6 +843,56 @@ export default function Dashboard() {
               <Play className="w-4 h-4" />
               <span>Dispatch Trip</span>
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* FILTERS BAR */}
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card-bg border border-border-custom p-4 rounded-[20px] shadow-premium">
+        <div className="flex items-center gap-2">
+          <Truck className="w-4 h-4 text-brand-primary" />
+          <span className="text-xs font-bold text-txt-primary uppercase tracking-wider">Fleet Telemetry Filter</span>
+        </div>
+        
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-end flex-wrap">
+          <div>
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="bg-surface dark:bg-card-elevated border border-border-custom/80 text-txt-primary px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none"
+            >
+              <option value="All">All Vehicle Types</option>
+              <option value="Heavy Duty">Heavy Duty</option>
+              <option value="Medium Duty">Medium Duty</option>
+              <option value="Light Duty">Light Duty</option>
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="bg-surface dark:bg-card-elevated border border-border-custom/80 text-txt-primary px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none"
+            >
+              <option value="All">All Statuses</option>
+              <option value="Available">Available</option>
+              <option value="On Trip">On Trip</option>
+              <option value="In Shop">In Shop</option>
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={selectedRegion}
+              onChange={(e) => setSelectedRegion(e.target.value)}
+              className="bg-surface dark:bg-card-elevated border border-border-custom/80 text-txt-primary px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none"
+            >
+              <option value="All">All Regions</option>
+              <option value="East Coast">East Coast</option>
+              <option value="West Coast">West Coast</option>
+              <option value="Midwest">Midwest</option>
+              <option value="South">South</option>
+            </select>
           </div>
         </div>
       </div>
@@ -425,32 +1080,26 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-3.5">
-            <div className="p-3 bg-brand-danger/5 border border-brand-danger/15 rounded-2xl flex items-start gap-3">
-              <Clock className="w-4 h-4 text-brand-danger shrink-0 mt-0.5" />
-              <div>
-                <h4 className="text-xs font-bold text-txt-primary">TRK-109 Delayed (Port congestion)</h4>
-                <p className="text-[11px] text-txt-secondary mt-1">Location: Interstate 95 North near Newark Exit. ETA delayed by 45 minutes.</p>
-                <span className="text-[9px] text-txt-muted block mt-1.5">Updated 5 minutes ago</span>
-              </div>
-            </div>
-
-            <div className="p-3 bg-brand-warning/5 border border-brand-warning/15 rounded-2xl flex items-start gap-3">
-              <AlertTriangle className="w-4 h-4 text-brand-warning shrink-0 mt-0.5" />
-              <div>
-                <h4 className="text-xs font-bold text-txt-primary">VH-305 Diagnostic Fault Alert</h4>
-                <p className="text-[11px] text-txt-secondary mt-1">Severe fuel injector exhaust warning on engine startup telemetry.</p>
-                <span className="text-[9px] text-txt-muted block mt-1.5">Updated 14 minutes ago</span>
-              </div>
-            </div>
-
-            <div className="p-3 bg-brand-warning/5 border border-brand-warning/15 rounded-2xl flex items-start gap-3">
-              <Clock className="w-4 h-4 text-brand-warning shrink-0 mt-0.5" />
-              <div>
-                <h4 className="text-xs font-bold text-txt-primary">TRK-302 Dispatch loading standby</h4>
-                <p className="text-[11px] text-txt-secondary mt-1">Cargo warehouse clearance delay. Awaiting final freight release signature.</p>
-                <span className="text-[9px] text-txt-muted block mt-1.5">Updated 30 minutes ago</span>
-              </div>
-            </div>
+            {isLoading ? (
+              <div className="text-center py-6 text-xs text-txt-secondary">Syncing active alerts...</div>
+            ) : (
+              dynamicAlerts.map((alert, idx) => (
+                <div key={idx} className={`p-3 ${alert.type === 'delay' || alert.type === 'maintenance' ? 'bg-brand-danger/5 border border-brand-danger/15' : 'bg-brand-primary/5 border border-brand-primary/15'} rounded-2xl flex items-start gap-3`}>
+                  {alert.type === 'delay' ? (
+                    <Clock className="w-4 h-4 text-brand-danger shrink-0 mt-0.5" />
+                  ) : alert.type === 'maintenance' ? (
+                    <AlertTriangle className="w-4 h-4 text-brand-warning shrink-0 mt-0.5" />
+                  ) : (
+                    <CheckCircle className="w-4 h-4 text-brand-primary shrink-0 mt-0.5" />
+                  )}
+                  <div>
+                    <h4 className="text-xs font-bold text-txt-primary">{alert.title}</h4>
+                    <p className="text-[11px] text-txt-secondary mt-1">{alert.description}</p>
+                    <span className="text-[9px] text-txt-muted block mt-1.5">{alert.time}</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -517,32 +1166,20 @@ export default function Dashboard() {
           </div>
 
           <div className="relative border-l-2 border-border-custom ml-3.5 space-y-5.5 py-1">
-            <div className="relative pl-6">
-              <div className="absolute -left-[7px] top-0.5 w-3.5 h-3.5 bg-brand-success rounded-full ring-4 ring-card-bg" />
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-txt-primary">TRK-204 — Newark Hub</h4>
-                <span className="text-[10px] font-mono font-bold text-brand-primary">12:45 PM</span>
-              </div>
-              <p className="text-[11px] text-txt-secondary mt-1">Volvo FH series delivering temperature-sensitive medical supplies.</p>
-            </div>
-
-            <div className="relative pl-6">
-              <div className="absolute -left-[7px] top-0.5 w-3.5 h-3.5 bg-brand-primary rounded-full ring-4 ring-card-bg" />
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-txt-primary">TRK-114 — Philadelphia Terminal</h4>
-                <span className="text-[10px] font-mono font-bold text-brand-primary">2:15 PM</span>
-              </div>
-              <p className="text-[11px] text-txt-secondary mt-1">Freightliner shipping electronic retail goods. On time route status.</p>
-            </div>
-
-            <div className="relative pl-6">
-              <div className="absolute -left-[7px] top-0.5 w-3.5 h-3.5 bg-brand-success rounded-full ring-4 ring-card-bg" />
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-txt-primary">TRK-088 — Baltimore Logistics Port</h4>
-                <span className="text-[10px] font-mono font-bold text-brand-primary">4:30 PM</span>
-              </div>
-              <p className="text-[11px] text-txt-secondary mt-1">Heavy-duty flatbed delivery of raw manufacturing metals.</p>
-            </div>
+            {isLoading ? (
+              <div className="text-center py-6 text-xs text-txt-secondary">Syncing cargo routes...</div>
+            ) : (
+              dynamicDeliveries.map((del, idx) => (
+                <div key={idx} className="relative pl-6">
+                  <div className="absolute -left-[7px] top-0.5 w-3.5 h-3.5 bg-brand-success rounded-full ring-4 ring-card-bg" />
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-txt-primary">{del.title}</h4>
+                    <span className="text-[10px] font-mono font-bold text-brand-primary">{del.time}</span>
+                  </div>
+                  <p className="text-[11px] text-txt-secondary mt-1">{del.description}</p>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

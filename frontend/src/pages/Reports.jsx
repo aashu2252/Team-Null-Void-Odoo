@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText,
@@ -15,12 +15,15 @@ import {
   Mail
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import api from '../services/api';
 
 export default function Reports() {
   const [reports, setReports] = useState([
-    { id: 'REP-001', name: 'Q2 Fleet Fuel Performance Audit', type: 'PDF Report', scope: 'Full Fleet', date: 'Jul 12, 2026', size: '2.4 MB', status: 'Completed' },
-    { id: 'REP-002', name: 'FMCRA Driver Hours of Service Compliance', type: 'Spreadsheet', scope: 'Personnel', date: 'Jul 10, 2026', size: '4.8 MB', status: 'Completed' },
-    { id: 'REP-003', name: 'Maintenance Work Order Diagnostic Log', type: 'PDF Report', scope: 'Assets (Vehicles)', date: 'Jul 08, 2026', size: '1.2 MB', status: 'Completed' }
+    { id: 'REP-001', name: 'Fleet Fuel Performance Audit', type: 'CSV Export', scope: 'Full Fleet', date: 'Jul 12, 2026', size: 'Calculating...', status: 'Ready', key: 'fuel-logs' },
+    { id: 'REP-002', name: 'Personnel & Driver Safety Compliance Roster', type: 'CSV Export', scope: 'Personnel', date: 'Jul 10, 2026', size: 'Calculating...', status: 'Ready', key: 'drivers' },
+    { id: 'REP-003', name: 'Maintenance Work Order Diagnostic Log', type: 'CSV Export', scope: 'Assets (Vehicles)', date: 'Jul 08, 2026', size: 'Calculating...', status: 'Ready', key: 'maintenance' },
+    { id: 'REP-004', name: 'Expenses & Operational Cost Audit Ledger', type: 'CSV Export', scope: 'Finance', date: 'Jul 05, 2026', size: 'Calculating...', status: 'Ready', key: 'expenses' },
+    { id: 'REP-005', name: 'Trips Operations Manifest Ledger', type: 'CSV Export', scope: 'Logistics', date: 'Jul 03, 2026', size: 'Calculating...', status: 'Ready', key: 'trips' },
   ]);
 
   const [scheduledTemplates, setScheduledTemplates] = useState([
@@ -38,30 +41,127 @@ export default function Reports() {
     recipient: ''
   });
 
+  const loadReportSizes = async () => {
+    try {
+      const [fuelRes, driversRes, maintRes, expRes, tripsRes] = await Promise.all([
+        api.get('/api/fuel-logs?limit=1000'),
+        api.get('/api/drivers?limit=1000'),
+        api.get('/api/maintenance?limit=1000'),
+        api.get('/api/expenses?limit=1000'),
+        api.get('/api/trips?limit=1000')
+      ]);
+
+      const getLength = (res, prop) => {
+        const arr = Array.isArray(res.data?.data) ? res.data.data : res.data?.data?.[prop] || [];
+        return arr.length;
+      };
+
+      const counts = {
+        'fuel-logs': getLength(fuelRes, 'fuelLogs'),
+        'drivers': getLength(driversRes, 'drivers'),
+        'maintenance': getLength(maintRes, 'maintenance'),
+        'expenses': getLength(expRes, 'expenses'),
+        'trips': getLength(tripsRes, 'trips')
+      };
+
+      setReports(prev => prev.map(r => {
+        const count = counts[r.key] || 0;
+        const sizeKB = ((count * 150) / 1024).toFixed(1);
+        return {
+          ...r,
+          size: `${sizeKB} KB (${count} rows)`,
+          date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+        };
+      }));
+    } catch (err) {
+      console.warn('Failed to calculate report file sizes', err);
+    }
+  };
+
+  useEffect(() => {
+    loadReportSizes();
+  }, []);
+
   const compileQuickReport = () => {
     setIsCompiling(true);
     toast.success('Initiating Quick Report Compiler...', {
       style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
     });
 
-    setTimeout(() => {
-      const createdId = 'REP-00' + (reports.length + 1);
-      const newRep = {
-        id: createdId,
-        name: 'Operations Summary (Auto-Compiled)',
-        type: 'PDF Report',
-        scope: 'All active divisions',
-        date: 'Jul 12, 2026',
-        size: '1.8 MB',
-        status: 'Completed'
-      };
-
-      setReports(prev => [newRep, ...prev]);
+    setTimeout(async () => {
+      await loadReportSizes();
       setIsCompiling(false);
-      toast.success(`Report ${createdId} compiled and ready for download.`, {
+      toast.success(`Operations summary and report indices updated.`, {
         style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
       });
     }, 1500);
+  };
+
+  const handleDownloadReport = async (rep) => {
+    toast.success(`Generating CSV for ${rep.name}...`, {
+      style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+    });
+
+    try {
+      let csvContent = "";
+      if (rep.key === 'fuel-logs') {
+        const res = await api.get('/api/fuel-logs?limit=1000');
+        const logsData = Array.isArray(res.data.data) ? res.data.data : res.data.data?.fuelLogs || [];
+        csvContent = "Refuel ID,Vehicle,Trip Link,Date,Liters,Cost,Location\n"
+          + logsData.map(l => {
+            const vReg = l.vehicle?.registrationNumber || l.vehicle || 'N/A';
+            const tId = l.trip?.id || l.trip || 'N/A';
+            return `"${l.id || l._id}","${vReg}","${tId}","${l.date}",${l.liters},${l.cost},"${l.location}"`;
+          }).join("\n");
+      } else if (rep.key === 'drivers') {
+        const res = await api.get('/api/drivers?limit=1000');
+        const driversData = Array.isArray(res.data.data) ? res.data.data : res.data.data?.drivers || [];
+        csvContent = "Driver ID,Name,Status,Safety Score,Trips Completed,Contact Number,License Category\n"
+          + driversData.map(d => `"${d.id || d._id}","${d.name}","${d.status}",${d.safetyScore},${d.trips},"${d.contactNumber}","${d.licenseCategory}"`).join("\n");
+      } else if (rep.key === 'maintenance') {
+        const res = await api.get('/api/maintenance?limit=1000');
+        const maintData = Array.isArray(res.data.data) ? res.data.data : res.data.data?.maintenance || [];
+        csvContent = "Work Order ID,Vehicle,Title,Description,Priority,Cost,Status,Start Date\n"
+          + maintData.map(m => {
+            const vReg = m.vehicle?.registrationNumber || m.vehicle?.vehicleName || m.vehicle || 'N/A';
+            return `"${m.id || m._id}","${vReg}","${m.title}","${m.description}","${m.priority}",${m.cost},"${m.status}","${m.startDate}"`;
+          }).join("\n");
+      } else if (rep.key === 'expenses') {
+        const res = await api.get('/api/expenses?limit=1000');
+        const expData = Array.isArray(res.data.data) ? res.data.data : res.data.data?.expenses || [];
+        csvContent = "Expense ID,Description,Type,Amount,Date,Vehicle,Trip,Status\n"
+          + expData.map(e => {
+            const vReg = e.vehicle?.registrationNumber || e.vehicle || 'N/A';
+            const tId = e.trip?.id || e.trip || 'N/A';
+            return `"${e.id || e._id}","${e.description}","${e.type}",${e.amount},"${e.date}","${vReg}","${tId}","${e.status}"`;
+          }).join("\n");
+      } else if (rep.key === 'trips') {
+        const res = await api.get('/api/trips?limit=1000');
+        const tripsData = Array.isArray(res.data.data) ? res.data.data : res.data.data?.trips || [];
+        csvContent = "Trip ID,Source,Destination,Status,Driver,Vehicle,Start Date,End Date\n"
+          + tripsData.map(t => {
+            const dName = t.driver?.name || t.driver || 'N/A';
+            const vReg = t.vehicle?.registrationNumber || t.vehicle || 'N/A';
+            return `"${t.id || t._id}","${t.source}","${t.destination}","${t.status}","${dName}","${vReg}","${t.startDate}","${t.endDate}"`;
+          }).join("\n");
+      }
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `${rep.key}_report_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success(`${rep.name} downloaded successfully!`, {
+        style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+      });
+    } catch (err) {
+      toast.error('Failed to generate and download report.');
+      console.error(err);
+    }
   };
 
   const handleCreateSchedule = (e) => {
@@ -171,7 +271,7 @@ export default function Reports() {
                       <td className="py-3.5 text-right font-mono font-bold text-txt-primary">{rep.size}</td>
                       <td className="py-3.5 text-center">
                         <button
-                          onClick={() => toast.success(`Downloading ${rep.name}...`)}
+                          onClick={() => handleDownloadReport(rep)}
                           className="p-1.5 text-brand-primary hover:bg-brand-primary/10 rounded-lg transition-colors cursor-pointer inline-flex"
                           title="Download document"
                         >

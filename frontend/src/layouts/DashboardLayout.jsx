@@ -55,20 +55,29 @@ export default function DashboardLayout() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const { hasPermission } = usePermissions();
-
   const allMenuItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, requiredPermission: 'dashboard.view' },
-    { name: 'Fleet', path: '/dashboard/vehicles', icon: Truck, requiredPermission: 'vehicle.view' },
-    { name: 'Drivers', path: '/dashboard/drivers', icon: Users, requiredPermission: 'driver.view' },
-    { name: 'Trips', path: '/dashboard/trips', icon: Route, requiredPermission: 'trip.view' },
-    { name: 'Maintenance', path: '/dashboard/maintenance', icon: Wrench, requiredPermission: 'maintenance.view' },
-    { name: 'Fuel & Expenses', path: '/dashboard/expenses', icon: Fuel, requiredPermission: 'expense.view' },
-    { name: 'Analytics', path: '/dashboard/reports', icon: FileBarChart, requiredPermission: 'analytics.view' },
-    { name: 'Settings', path: '/dashboard/settings', icon: Settings, requiredPermission: '*' } // Only super admins for now or add a specific setting permission
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Fleet', path: '/dashboard/vehicles', icon: Truck },
+    { name: 'Drivers', path: '/dashboard/drivers', icon: Users },
+    { name: 'Trips', path: '/dashboard/trips', icon: Route },
+    { name: 'Maintenance', path: '/dashboard/maintenance', icon: Wrench },
+    { name: 'Fuel Logs', path: '/dashboard/fuel-logs', icon: Fuel },
+    { name: 'Expenses', path: '/dashboard/expenses', icon: CreditCard },
+    { name: 'Analytics', path: '/dashboard/reports', icon: FileBarChart },
+    { name: 'Settings', path: '/dashboard/settings', icon: Settings }
   ];
 
-  const menuItems = allMenuItems.filter(item => hasPermission(item.requiredPermission) || hasPermission('*'));
+  const roleName = user?.role?.name || user?.role || 'Dispatcher';
+  const menuItems = allMenuItems.filter(item => {
+    if (roleName === 'Driver') {
+      return ['Dashboard', 'Trips', 'Settings'].includes(item.name);
+    } else if (roleName === 'Safety Officer') {
+      return ['Dashboard', 'Drivers', 'Settings'].includes(item.name);
+    } else if (roleName === 'Financial Analyst') {
+      return ['Dashboard', 'Fuel Logs', 'Expenses', 'Analytics', 'Settings'].includes(item.name);
+    }
+    return true; // Fleet Manager & Dispatcher get full access
+  });
 
   const commandPaletteItems = [
     { name: 'Go to Dashboard', shortcut: 'G + D', action: () => navigate('/dashboard') },

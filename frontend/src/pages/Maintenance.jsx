@@ -44,37 +44,39 @@ export default function Maintenance() {
     status: 'Active'
   });
 
-  // Load maintenance records and vehicle refs from backend on mount
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [mainRes, vehiclesRes] = await Promise.all([
-          api.get('/api/maintenance'),
-          api.get('/api/vehicles')
-        ]);
+  const loadData = async () => {
+    try {
+      const [mainRes, vehiclesRes] = await Promise.all([
+        api.get('/api/maintenance?limit=1000'),
+        api.get('/api/vehicles?limit=1000')
+      ]);
 
-        if (mainRes.data?.success && mainRes.data.data.length > 0) {
-          const mapped = mainRes.data.data.map(m => ({
-            ...m,
-            id: m.id || m._id,
-            vehicle: m.vehicle?.vehicleName
-              ? `${m.vehicle.registrationNumber} (${m.vehicle.vehicleName})`
-              : m.vehicle || 'N/A',
-            priority: m.priority || 'Medium'
-          }));
-          setMaintenanceLogs(mapped);
-        }
-
-        if (vehiclesRes.data?.success) {
-          setVehicleRefs(vehiclesRes.data.data.map(v => ({
-            _id: v._id,
-            label: `${v.registrationNumber} (${v.vehicleName})`
-          })));
-        }
-      } catch (err) {
-        console.warn('Backend offline — retaining local maintenance registry.');
+      if (mainRes.data?.success) {
+        const maintData = Array.isArray(mainRes.data.data) ? mainRes.data.data : mainRes.data.data?.maintenance || [];
+        const mapped = maintData.map(m => ({
+          ...m,
+          id: m.id || m._id,
+          vehicle: m.vehicle?.vehicleName
+            ? `${m.vehicle.registrationNumber} (${m.vehicle.vehicleName})`
+            : m.vehicle || 'N/A',
+          priority: m.priority || 'Medium'
+        }));
+        setMaintenanceLogs(mapped);
       }
-    };
+
+      if (vehiclesRes.data?.success) {
+        const vehiclesData = Array.isArray(vehiclesRes.data.data) ? vehiclesRes.data.data : vehiclesRes.data.data?.vehicles || [];
+        setVehicleRefs(vehiclesData.map(v => ({
+          _id: v._id,
+          label: `${v.registrationNumber} (${v.vehicleName})`
+        })));
+      }
+    } catch (err) {
+      console.warn('Backend offline — retaining local maintenance registry.');
+    }
+  };
+
+  useEffect(() => {
     loadData();
   }, []);
 
@@ -97,31 +99,16 @@ export default function Maintenance() {
     try {
       const res = await api.post('/api/maintenance', payload);
       if (res.data?.success) {
-        const saved = res.data.data;
-        const order = {
-          ...saved,
-          id: saved.id || saved._id,
-          vehicle: vehicleRefs.find(v => v._id === newWorkOrder.vehicleId)?.label || newWorkOrder.vehicleId || 'N/A',
-          priority: newWorkOrder.priority
-        };
-        setMaintenanceLogs(prev => [order, ...prev]);
+        if (newWorkOrder.vehicleId) {
+          await api.put(`/api/vehicles/${newWorkOrder.vehicleId}`, { status: 'In Shop' });
+        }
         toast.success(`Work Order saved to database!`, {
           style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
         });
+        loadData();
       }
     } catch (err) {
-      console.warn('Backend write failed — saving work order locally.', err);
-      const createdId = 'WO-80' + (maintenanceLogs.length + 1);
-      const order = {
-        ...newWorkOrder,
-        id: createdId,
-        vehicle: vehicleRefs.find(v => v._id === newWorkOrder.vehicleId)?.label || newWorkOrder.vehicleId || 'N/A',
-        cost: parseFloat(newWorkOrder.cost) || 0
-      };
-      setMaintenanceLogs(prev => [order, ...prev]);
-      toast.success(`Work Order ${createdId} created locally (offline mode)!`, {
-        style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-      });
+      toast.error(err.response?.data?.message || err.message || 'Operation failed');
     }
 
     setShowAddModal(false);
@@ -134,6 +121,34 @@ export default function Maintenance() {
       startDate: '',
       status: 'Active'
     });
+  };
+
+  const handleCloseWorkOrder = async (log) => {
+    if (!window.confirm(`Are you sure you want to complete and close work order ${log.id}?`)) {
+      return;
+    }
+
+    try {
+      const res = await api.put(`/api/maintenance/${log._id}`, {
+        status: 'Completed',
+        endDate: new Date().toISOString().split('T')[0]
+      });
+
+      if (res.data?.success) {
+        const vehicleId = log.vehicle?._id || log.vehicleId || vehicleRefs.find(v => log.vehicle && log.vehicle.startsWith(v.label.split(' ')[0]))?._id;
+        
+        if (vehicleId) {
+          await api.put(`/api/vehicles/${vehicleId}`, { status: 'Available' });
+        }
+        
+        toast.success(`Work Order completed and vehicle is available!`, {
+          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+        });
+        loadData();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Operation failed');
+    }
   };
 
   const getPriorityBadge = (p) => {
@@ -210,6 +225,7 @@ export default function Maintenance() {
                     <th className="pb-3">Start Date</th>
                     <th className="pb-3 text-right">Cost</th>
                     <th className="pb-3 text-center">Status</th>
+                    <th className="pb-3 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-custom/50">
@@ -224,9 +240,23 @@ export default function Maintenance() {
                         </div>
                       </td>
                       <td className="py-3.5">{getPriorityBadge(log.priority)}</td>
-                      <td className="py-3.5 text-txt-secondary font-mono">{log.startDate}</td>
-                      <td className="py-3.5 text-right font-mono font-bold text-txt-primary">${log.cost.toLocaleString()}</td>
+                      <td className="py-3.5 text-txt-secondary font-mono">
+                        {log.startDate ? new Date(log.startDate).toISOString().split('T')[0] : 'N/A'}
+                      </td>
+                      <td className="py-3.5 text-right font-mono font-bold text-txt-primary">${log.cost ? log.cost.toLocaleString() : '0'}</td>
                       <td className="py-3.5 text-center flex justify-center mt-2.5">{getStatusBadge(log.status)}</td>
+                      <td className="py-3.5 text-center">
+                        {log.status === 'Active' ? (
+                          <button
+                            onClick={() => handleCloseWorkOrder(log)}
+                            className="px-2.5 py-1 bg-brand-success hover:bg-brand-success/95 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer font-sans"
+                          >
+                            Close Maintenance
+                          </button>
+                        ) : (
+                          <span className="text-[10px] font-semibold text-txt-muted">Completed</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
