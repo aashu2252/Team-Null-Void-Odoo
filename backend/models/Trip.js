@@ -13,11 +13,13 @@ const tripSchema = new mongoose.Schema({
   },
   vehicle: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Vehicle'
+    ref: 'Vehicle',
+    required: [true, 'Vehicle reference is required']
   },
   driver: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Driver'
+    ref: 'Driver',
+    required: [true, 'Driver reference is required']
   },
   cargoWeight: {
     type: Number,

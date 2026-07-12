@@ -39,6 +39,12 @@ const driverSchema = new mongoose.Schema({
       message: '{VALUE} is not a valid status'
     },
     default: 'Available'
+  },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'User reference is required'],
+    unique: true
   }
 }, {
   timestamps: true
