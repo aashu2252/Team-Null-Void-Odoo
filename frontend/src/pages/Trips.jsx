@@ -341,21 +341,8 @@ export default function Trips() {
                   <h3 className="text-sm font-bold text-txt-primary">Create Dispatch Manifest</h3>
                 </div>
                 <form onSubmit={handleDispatchSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
-                        Cargo Weight (lbs)*
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        value={newManifest.cargoWeight}
-                        onChange={(e) => setNewManifest(prev => ({ ...prev, cargoWeight: e.target.value }))}
-                        placeholder="e.g. 24000"
-                        className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none focus:border-brand-primary"
-                      />
-                    </div>
 
+                  {/* Row 1: Source + Destination */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
@@ -386,7 +373,22 @@ export default function Trips() {
                     </div>
                   </div>
 
+                  {/* Row 2: Cargo Weight + Planned Distance + Revenue */}
                   <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
+                        Cargo Weight (lbs)*
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        value={newManifest.cargoWeight}
+                        onChange={(e) => setNewManifest(prev => ({ ...prev, cargoWeight: e.target.value }))}
+                        placeholder="e.g. 24000"
+                        className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none focus:border-brand-primary"
+                      />
+                    </div>
+
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
                         Planned Distance (mi)*
@@ -397,19 +399,6 @@ export default function Trips() {
                         value={newManifest.plannedDistance}
                         onChange={(e) => setNewManifest(prev => ({ ...prev, plannedDistance: e.target.value }))}
                         placeholder="e.g. 240"
-                        className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none focus:border-brand-primary"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
-                        Start Odometer (mi)
-                      </label>
-                      <input
-                        type="number"
-                        value={newManifest.startOdometer}
-                        onChange={(e) => setNewManifest(prev => ({ ...prev, startOdometer: e.target.value }))}
-                        placeholder="e.g. 42000"
                         className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none focus:border-brand-primary"
                       />
                     </div>
@@ -428,6 +417,21 @@ export default function Trips() {
                     </div>
                   </div>
 
+                  {/* Row 3: Start Odometer (optional) */}
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
+                      Start Odometer (mi)
+                    </label>
+                    <input
+                      type="number"
+                      value={newManifest.startOdometer}
+                      onChange={(e) => setNewManifest(prev => ({ ...prev, startOdometer: e.target.value }))}
+                      placeholder="e.g. 42000"
+                      className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none focus:border-brand-primary"
+                    />
+                  </div>
+
+                  {/* Row 4: Driver + Vehicle dropdowns */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
@@ -477,6 +481,7 @@ export default function Trips() {
                     </div>
                   </div>
 
+                  {/* Submit Row */}
                   <div className="pt-3 border-t border-border-custom flex justify-end gap-2">
                     <button
                       type="button"
