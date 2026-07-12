@@ -105,7 +105,7 @@ export default function Maintenance() {
           priority: newWorkOrder.priority
         };
         setMaintenanceLogs(prev => [order, ...prev]);
-        toast.success('Work Order saved to database!', {
+        toast.success(`Work Order saved to database!`, {
           style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
         });
       }
@@ -162,8 +162,8 @@ export default function Maintenance() {
       case 'Active':
       default:
         return (
-          <span className="flex items-center gap-1 text-[10px] font-bold text-brand-orange bg-brand-orange/10 px-2 py-0.5 rounded-full animate-pulse">
-            <AlertTriangle className="w-3 h-3" />
+          <span className="flex items-center gap-1 text-[10px] font-bold text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-full">
+            <Clock className="w-3 h-3 animate-spin" />
             <span>Active</span>
           </span>
         );
@@ -171,7 +171,7 @@ export default function Maintenance() {
   };
 
   return (
-    <div className="space-y-6 max-w-full">
+    <div className="space-y-6 max-w-full font-sans">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl font-bold text-txt-primary">Asset Diagnostics &amp; Maintenance</h2>
@@ -224,13 +224,9 @@ export default function Maintenance() {
                         </div>
                       </td>
                       <td className="py-3.5">{getPriorityBadge(log.priority)}</td>
-                      <td className="py-3.5 text-txt-secondary">{log.startDate}</td>
-                      <td className="py-3.5 text-right font-mono font-bold text-txt-primary">
-                        ${typeof log.cost === 'number' ? log.cost.toFixed(2) : log.cost}
-                      </td>
-                      <td className="py-3.5 text-center">
-                        <div className="flex justify-center">{getStatusBadge(log.status)}</div>
-                      </td>
+                      <td className="py-3.5 text-txt-secondary font-mono">{log.startDate}</td>
+                      <td className="py-3.5 text-right font-mono font-bold text-txt-primary">${log.cost.toLocaleString()}</td>
+                      <td className="py-3.5 text-center flex justify-center mt-2.5">{getStatusBadge(log.status)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -261,9 +257,8 @@ export default function Maintenance() {
                       </div>
                     </div>
 
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                      doc.status === 'Approved' ? 'bg-brand-success/10 text-brand-success' : 'bg-brand-warning/10 text-brand-warning animate-pulse'
-                    }`}>
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${doc.status === 'Approved' ? 'bg-brand-success/10 text-brand-success' : 'bg-brand-warning/10 text-brand-warning animate-pulse'
+                      }`}>
                       {doc.status}
                     </span>
                   </div>
@@ -384,11 +379,38 @@ export default function Maintenance() {
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
+                    Repair Reason (Title)*
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newWorkOrder.title}
+                    onChange={(e) => setNewWorkOrder(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="e.g. Clean carbon filters and inspect valve leaks"
+                    className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none focus:border-brand-primary"
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
-                  {/* Start Date */}
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
-                      Start Date*
+                      Projected Repair Cost ($)*
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      value={newWorkOrder.cost}
+                      onChange={(e) => setNewWorkOrder(prev => ({ ...prev, cost: e.target.value }))}
+                      placeholder="e.g. 150"
+                      className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none focus:border-brand-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
+                      Service Start Date*
                     </label>
                     <input
                       type="date"
@@ -398,36 +420,6 @@ export default function Maintenance() {
                       className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none focus:border-brand-primary"
                     />
                   </div>
-
-                  {/* Cost */}
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
-                      Estimated Cost ($)*
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      value={newWorkOrder.cost}
-                      onChange={(e) => setNewWorkOrder(prev => ({ ...prev, cost: e.target.value }))}
-                      placeholder="e.g. 450"
-                      className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-2 text-xs text-txt-primary focus:outline-none focus:border-brand-primary"
-                    />
-                  </div>
-                </div>
-
-                {/* Status */}
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1">
-                    Initial Status
-                  </label>
-                  <select
-                    value={newWorkOrder.status}
-                    onChange={(e) => setNewWorkOrder(prev => ({ ...prev, status: e.target.value }))}
-                    className="w-full bg-surface dark:bg-card-elevated border border-border-custom/80 text-txt-primary px-3 py-2 rounded-xl text-xs focus:outline-none"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Completed">Completed</option>
-                  </select>
                 </div>
 
                 <div className="pt-3 border-t border-border-custom flex justify-end gap-2">

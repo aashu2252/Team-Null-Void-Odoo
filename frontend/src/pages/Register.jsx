@@ -5,7 +5,6 @@ import { z } from 'zod';
 import { toast } from 'react-hot-toast';
 import api from '../services/api';
 import { validateWithZod } from '../utils/zodValidator';
-import { useAuth } from '../context/AuthContext';
 import { Sparkles, Mail, Lock, Eye, EyeOff, ShieldCheck, User, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -31,27 +30,16 @@ const registerSchema = z.object({
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
 
   const handleRegisterSubmit = async (values, { setSubmitting }) => {
     const { confirmPassword, ...registerPayload } = values;
 
     try {
-      try {
-        await api.post('/api/auth/register', registerPayload);
-        toast.success('Workspace created successfully! Please login.', {
-          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-        });
-        navigate('/login');
-      } catch (err) {
-        console.warn('Backend server offline. Automatically logging you into a guest session...');
-        toast.success('Offline Registration: Logging you in with demo session...', {
-          duration: 3500,
-          style: { background: '#182230', color: '#4ADE80', border: '1px solid #2B3645' }
-        });
-        login('demo-token-reg', { fullName: values.fullName || 'New Manager', role: 'Operations Lead' });
-        navigate('/dashboard');
-      }
+      await api.post('/api/auth/register', registerPayload);
+      toast.success('Workspace created successfully! Please login.', {
+        style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+      });
+      navigate('/login');
     } catch (error) {
       const serverMessage = error.response?.data?.message || 'Server error. Please try again.';
       toast.error(serverMessage, {
