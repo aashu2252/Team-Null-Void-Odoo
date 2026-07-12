@@ -2,18 +2,11 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings as SettingsIcon,
-  Users,
   CreditCard,
   Key,
   Shield,
-  FileSpreadsheet,
-  Globe,
-  Bell,
-  Cpu,
-  CheckCircle,
   Plus,
-  RefreshCw,
-  Clock
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 

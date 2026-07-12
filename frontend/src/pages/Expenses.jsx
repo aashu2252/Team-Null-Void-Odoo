@@ -3,12 +3,6 @@ import { motion } from 'framer-motion';
 import {
   CreditCard,
   Plus,
-  TrendingUp,
-  Download,
-  AlertTriangle,
-  CheckCircle,
-  FileText,
-  DollarSign,
   Edit,
   Trash2
 } from 'lucide-react';

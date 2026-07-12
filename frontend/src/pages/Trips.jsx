@@ -7,17 +7,10 @@ import {
   Users,
   Box,
   DollarSign,
-  Clock,
-  Navigation,
   ArrowRight,
   Plus,
   X,
-  FileText,
-  AlertCircle,
-  CheckCircle2,
-  Calendar,
-  Layers,
-  TrendingUp
+  FileText
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../services/api';

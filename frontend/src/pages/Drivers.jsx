@@ -9,12 +9,9 @@ import {
   Plus,
   X,
   UserCheck,
-  Award,
-  Truck,
-  Filter,
-  CheckCircle2,
-  AlertTriangle,
-  Calendar
+  Calendar,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../services/api';
@@ -29,26 +26,29 @@ export default function Drivers() {
     { id: 'DR-006', name: 'James Taylor', rating: 4.6, experience: '7 Years', licenseCategory: 'CDL Class A (Expired)', licenseNumber: 'NJ-DL-0019283', licenseExpiryDate: '2026-06-01', safetyScore: 78, status: 'Suspended', trips: 395, email: 'j.taylor@transitops.com', contactNumber: '(555) 017-3810' }
   ]);
 
+  const [editingDriver, setEditingDriver] = useState(null);
+
   // Fetch drivers from backend database on mount
-  useEffect(() => {
-    const loadDrivers = async () => {
-      try {
-        const res = await api.get('/api/drivers');
-        if (res.data && res.data.success) {
-          const mapped = res.data.data.map(d => ({
-            ...d,
-            id: d.id || d._id.substring(d._id.length - 6),
-            rating: d.rating || 4.8,
-            trips: d.trips || Math.floor(Math.random() * 200) + 100,
-            experience: d.experience || '5 Years',
-            email: d.email || `${d.name.toLowerCase().replace(/\s+/g, '')}@transitops.com`
-          }));
-          setDrivers(mapped);
-        }
-      } catch (err) {
-        console.warn('Backend server offline. Retaining high-fidelity local drivers directory.');
+  const loadDrivers = async () => {
+    try {
+      const res = await api.get('/api/drivers?limit=1000');
+      if (res.data && res.data.success) {
+        const mapped = res.data.data.map(d => ({
+          ...d,
+          id: d.id || d._id.substring(d._id.length - 6),
+          rating: d.rating || 4.8,
+          trips: d.trips || Math.floor(Math.random() * 200) + 100,
+          experience: d.experience || '5 Years',
+          email: d.email || `${d.name.toLowerCase().replace(/\s+/g, '')}@transitops.com`
+        }));
+        setDrivers(mapped);
       }
-    };
+    } catch (err) {
+      console.warn('Backend server offline. Retaining high-fidelity local drivers directory.');
+    }
+  };
+
+  useEffect(() => {
     loadDrivers();
   }, []);
 
@@ -89,25 +89,6 @@ export default function Drivers() {
       return;
     }
 
-    let userId = null;
-    const operatorEmail = newDriver.email || `${newDriver.name.toLowerCase().replace(/\s+/g, '')}@transitops.com`;
-
-    try {
-      // 1. Pre-register User account for the Driver
-      const userRes = await api.post('/api/auth/register', {
-        fullName: newDriver.name,
-        email: operatorEmail,
-        password: 'transitops_driver_password_123',
-        role: 'Driver'
-      });
-      if (userRes.data && userRes.data.success) {
-        userId = userRes.data.data.user.id;
-      }
-    } catch (userErr) {
-      console.warn('Failed to pre-register Driver User model. Attempting driver creation with dummy fallback.', userErr);
-    }
-
-    // If registration is blocked because database has mock user already or backend is offline
     const payload = {
       name: newDriver.name,
       licenseNumber: newDriver.licenseNumber,
@@ -116,42 +97,47 @@ export default function Drivers() {
       contactNumber: newDriver.contactNumber,
       safetyScore: parseInt(newDriver.safetyScore) || 100,
       status: newDriver.status,
-      user: userId || '60d5ec4f31f6e2a220260712' // fallback validation objectId
+      user: editingDriver ? (editingDriver.user?._id || editingDriver.user) : undefined
     };
 
     try {
-      const res = await api.post('/api/drivers', payload);
-      if (res.data && res.data.success) {
-        const created = {
-          ...res.data.data,
-          id: res.data.data.id || res.data.data._id.substring(res.data.data._id.length - 6),
-          rating: 5.0,
-          trips: 0,
-          experience: newDriver.experience || '1 Year',
-          email: operatorEmail
-        };
-        setDrivers(prev => [created, ...prev]);
-        toast.success(`Operator ${newDriver.name} registered in database!`, {
-          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-        });
+      if (editingDriver) {
+        const res = await api.put(`/api/drivers/${editingDriver._id}`, payload);
+        if (res.data && res.data.success) {
+          toast.success(`Operator ${newDriver.name} updated successfully!`, {
+            style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+          });
+          setEditingDriver(null);
+          loadDrivers();
+        }
+      } else {
+        let userId = null;
+        const operatorEmail = newDriver.email || `${newDriver.name.toLowerCase().replace(/\s+/g, '')}@transitops.com`;
+        try {
+          const userRes = await api.post('/api/auth/register', {
+            fullName: newDriver.name,
+            email: operatorEmail,
+            password: 'transitops_driver_password_123',
+            role: 'Driver'
+          });
+          if (userRes.data && userRes.data.success) {
+            userId = userRes.data.data.user.id;
+          }
+        } catch (userErr) {
+          console.warn('Failed to pre-register Driver User model.', userErr);
+        }
+
+        payload.user = userId || '60d5ec4f31f6e2a220260712';
+        const res = await api.post('/api/drivers', payload);
+        if (res.data && res.data.success) {
+          toast.success(`Operator ${newDriver.name} registered in database!`, {
+            style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+          });
+          loadDrivers();
+        }
       }
     } catch (err) {
-      console.warn('Backend write failed. Preserving driver locally in cache...', err);
-      const createdId = 'DR-0' + (drivers.length + 1);
-      setDrivers(prev => [
-        {
-          ...newDriver,
-          id: createdId,
-          rating: 5.0,
-          safetyScore: parseInt(newDriver.safetyScore) || 100,
-          trips: parseInt(newDriver.trips) || 0
-        },
-        ...prev
-      ]);
-
-      toast.success(`Operator ${newDriver.name} added locally (offline mode).`, {
-        style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-      });
+      toast.error(err.response?.data?.message || err.message || 'Operation failed');
     }
 
     setNewDriver({
@@ -167,6 +153,58 @@ export default function Drivers() {
       email: ''
     });
     setShowAddModal(false);
+  };
+
+  const handleEditDriverClick = (driver) => {
+    setEditingDriver(driver);
+    setNewDriver({
+      name: driver.name,
+      experience: driver.experience,
+      licenseCategory: driver.licenseCategory,
+      licenseNumber: driver.licenseNumber,
+      licenseExpiryDate: driver.licenseExpiryDate ? new Date(driver.licenseExpiryDate).toISOString().split('T')[0] : '',
+      contactNumber: driver.contactNumber,
+      safetyScore: driver.safetyScore,
+      status: driver.status,
+      trips: driver.trips,
+      email: driver.email
+    });
+    setShowAddModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setEditingDriver(null);
+    setNewDriver({
+      name: '',
+      experience: '',
+      licenseCategory: 'CDL Class A (Active)',
+      licenseNumber: '',
+      licenseExpiryDate: '',
+      contactNumber: '',
+      safetyScore: 100,
+      status: 'Available',
+      trips: 0,
+      email: ''
+    });
+    setShowAddModal(false);
+  };
+
+  const handleDeleteDriverClick = async (driver) => {
+    if (!window.confirm(`Are you sure you want to delete operator ${driver.name}?`)) {
+      return;
+    }
+
+    try {
+      const res = await api.delete(`/api/drivers/${driver._id}`);
+      if (res.data && res.data.success) {
+        toast.success(`Operator ${driver.name} removed from database.`, {
+          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+        });
+        loadDrivers();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Operation failed');
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -266,7 +304,31 @@ export default function Drivers() {
                     <p className="text-[10px] font-mono text-txt-muted mt-0.5">{driver.id} • {driver.experience} Exp</p>
                   </div>
                 </div>
-                {getStatusBadge(driver.status)}
+                <div className="flex flex-col items-end gap-1.5">
+                  {getStatusBadge(driver.status)}
+                  <div className="flex gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditDriverClick(driver);
+                      }}
+                      className="p-1 hover:bg-surface text-txt-secondary hover:text-brand-primary rounded-md transition-colors cursor-pointer"
+                      title="Edit Profile"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteDriverClick(driver);
+                      }}
+                      className="p-1 hover:bg-surface text-txt-secondary hover:text-brand-danger rounded-md transition-colors cursor-pointer"
+                      title="Delete Profile"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2 border-y border-border-custom/50 py-3.5 my-4 text-center">
@@ -348,10 +410,10 @@ export default function Drivers() {
               <div className="p-4 bg-surface/50 border-b border-border-custom flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <UserCheck className="w-5 h-5 text-brand-primary" />
-                  <h3 className="text-sm font-bold text-txt-primary">Create Driver Profile</h3>
+                  <h3 className="text-sm font-bold text-txt-primary">{editingDriver ? 'Edit Operator Profile' : 'Create Driver Profile'}</h3>
                 </div>
                 <button
-                  onClick={() => setShowAddModal(false)}
+                  onClick={handleCloseModal}
                   className="text-txt-secondary hover:text-txt-primary p-1 rounded-lg hover:bg-surface transition-colors"
                 >
                   <X className="w-4.5 h-4.5" />
@@ -496,7 +558,7 @@ export default function Drivers() {
                 <div className="pt-3 border-t border-border-custom flex justify-end gap-2">
                   <button
                     type="button"
-                    onClick={() => setShowAddModal(false)}
+                    onClick={handleCloseModal}
                     className="px-4 py-2 bg-surface text-txt-primary border border-border-custom rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Cancel
@@ -505,7 +567,7 @@ export default function Drivers() {
                     type="submit"
                     className="px-4 py-2 bg-brand-primary text-white rounded-xl text-xs font-semibold shadow-md shadow-brand-primary/10 hover:bg-brand-primary/95 transition-all cursor-pointer"
                   >
-                    Create Profile
+                    {editingDriver ? 'Save Profile' : 'Create Profile'}
                   </button>
                 </div>
               </form>

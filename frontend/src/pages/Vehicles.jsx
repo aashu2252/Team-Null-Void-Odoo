@@ -2,12 +2,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
-  Filter,
   Plus,
   Download,
   Trash2,
   CheckCircle,
-  AlertTriangle,
   Wrench,
   XCircle,
   Truck,
@@ -15,7 +13,7 @@ import {
   Activity,
   X,
   MapPin,
-  DollarSign
+  Edit
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../services/api';
@@ -49,24 +47,27 @@ export default function Vehicles() {
     status: 'Available'
   });
 
+  const [editingVehicle, setEditingVehicle] = useState(null);
+
   // Fetch vehicles from database on mount
-  useEffect(() => {
-    const loadVehicles = async () => {
-      try {
-        const res = await api.get('/api/vehicles');
-        if (res.data && res.data.success) {
-          const mapped = res.data.data.map(v => ({
-            ...v,
-            fuel: v.fuel || Math.floor(Math.random() * 40) + 60,
-            health: v.health || Math.floor(Math.random() * 15) + 85,
-            driver: v.driver || 'Unassigned'
-          }));
-          setVehicles(mapped);
-        }
-      } catch (err) {
-        console.warn('Backend server offline. Using pre-configured local vehicle registry.');
+  const loadVehicles = async () => {
+    try {
+      const res = await api.get('/api/vehicles?limit=1000');
+      if (res.data && res.data.success) {
+        const mapped = res.data.data.map(v => ({
+          ...v,
+          fuel: v.fuel || Math.floor(Math.random() * 40) + 60,
+          health: v.health || Math.floor(Math.random() * 15) + 85,
+          driver: v.driver?.name || v.driver || 'Unassigned'
+        }));
+        setVehicles(mapped);
       }
-    };
+    } catch (err) {
+      console.warn('Backend server offline. Using pre-configured local vehicle registry.');
+    }
+  };
+
+  useEffect(() => {
     loadVehicles();
   }, []);
 
@@ -118,37 +119,62 @@ export default function Vehicles() {
     };
 
     try {
-      const res = await api.post('/api/vehicles', payload);
-      if (res.data && res.data.success) {
-        const created = {
-          ...res.data.data,
-          fuel: 100,
-          health: 100,
-          driver: 'Unassigned'
-        };
-        setVehicles(prev => [created, ...prev]);
-        toast.success(`Vehicle ${newVehicle.vehicleName} registered in database!`, {
-          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-        });
+      if (editingVehicle) {
+        const res = await api.put(`/api/vehicles/${editingVehicle._id}`, payload);
+        if (res.data && res.data.success) {
+          toast.success(`Vehicle ${newVehicle.vehicleName} updated successfully!`, {
+            style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+          });
+          setEditingVehicle(null);
+          loadVehicles();
+        }
+      } else {
+        const res = await api.post('/api/vehicles', payload);
+        if (res.data && res.data.success) {
+          toast.success(`Vehicle ${newVehicle.vehicleName} registered in database!`, {
+            style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+          });
+          loadVehicles();
+        }
       }
     } catch (err) {
-      console.warn('Database save failed. Retaining locally in state cache...', err);
-      setVehicles(prev => [
-        {
-          ...newVehicle,
-          maxLoadCapacity: parseFloat(newVehicle.maxLoadCapacity),
-          odometer: parseFloat(newVehicle.odometer) || 0,
-          acquisitionCost: parseFloat(newVehicle.acquisitionCost),
-          fuel: 100,
-          health: 100
-        },
-        ...prev
-      ]);
-      toast.success(`Vehicle ${newVehicle.vehicleName} added locally (offline mode).`, {
-        style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-      });
+      toast.error(err.response?.data?.message || err.message || 'Operation failed');
     }
-    
+
+    setNewVehicle({
+      vehicleName: '',
+      model: '',
+      registrationNumber: '',
+      type: 'Heavy Duty',
+      driver: 'Unassigned',
+      maxLoadCapacity: '',
+      region: 'East Coast',
+      odometer: 0,
+      acquisitionCost: '',
+      status: 'Available'
+    });
+    setShowAddModal(false);
+  };
+
+  const handleEditVehicleClick = (v) => {
+    setEditingVehicle(v);
+    setNewVehicle({
+      vehicleName: v.vehicleName,
+      model: v.model,
+      registrationNumber: v.registrationNumber,
+      type: v.type,
+      driver: v.driver?._id || v.driver || 'Unassigned',
+      maxLoadCapacity: v.maxLoadCapacity,
+      region: v.region,
+      odometer: v.odometer,
+      acquisitionCost: v.acquisitionCost,
+      status: v.status
+    });
+    setShowAddModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setEditingVehicle(null);
     setNewVehicle({
       vehicleName: '',
       model: '',
@@ -165,19 +191,21 @@ export default function Vehicles() {
   };
 
   const handleDeleteVehicle = async (name) => {
+    if (!window.confirm(`Are you sure you want to delete vehicle ${name}?`)) {
+      return;
+    }
     const target = vehicles.find(v => v.vehicleName === name);
     if (target && target._id) {
       try {
         await api.delete(`/api/vehicles/${target._id}`);
+        toast.success(`Vehicle ${name} removed from registry.`, {
+          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+        });
+        loadVehicles();
       } catch (err) {
-        console.warn('Failed to delete vehicle from database. Removing from local cache.', err);
+        toast.error(err.response?.data?.message || err.message || 'Operation failed');
       }
     }
-
-    setVehicles(prev => prev.filter(v => v.vehicleName !== name));
-    toast.success(`Vehicle ${name} removed from registry.`, {
-      style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-    });
   };
 
   const handleExport = () => {
@@ -429,6 +457,16 @@ export default function Vehicles() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            handleEditVehicleClick(v);
+                          }}
+                          className="p-1.5 text-txt-secondary hover:text-brand-primary hover:bg-brand-primary/10 rounded-lg transition-colors cursor-pointer"
+                          title="Edit vehicle"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleDeleteVehicle(v.vehicleName);
                           }}
                           className="p-1.5 text-txt-secondary hover:text-brand-danger hover:bg-brand-danger/10 rounded-lg transition-colors cursor-pointer"
@@ -466,10 +504,10 @@ export default function Vehicles() {
               <div className="p-4 bg-surface/50 border-b border-border-custom flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Truck className="w-5 h-5 text-brand-primary" />
-                  <h3 className="text-sm font-bold text-txt-primary">Register New Fleet Vehicle</h3>
+                  <h3 className="text-sm font-bold text-txt-primary">{editingVehicle ? 'Edit Fleet Vehicle Details' : 'Register New Fleet Vehicle'}</h3>
                 </div>
                 <button
-                  onClick={() => setShowAddModal(false)}
+                  onClick={handleCloseModal}
                   className="text-txt-secondary hover:text-txt-primary p-1 rounded-lg hover:bg-surface transition-colors"
                 >
                   <X className="w-4.5 h-4.5" />
@@ -616,7 +654,7 @@ export default function Vehicles() {
                 <div className="pt-3 border-t border-border-custom flex justify-end gap-2">
                   <button
                     type="button"
-                    onClick={() => setShowAddModal(false)}
+                    onClick={handleCloseModal}
                     className="px-4 py-2 bg-surface text-txt-primary border border-border-custom rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Cancel

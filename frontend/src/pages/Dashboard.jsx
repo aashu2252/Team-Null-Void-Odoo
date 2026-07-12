@@ -16,8 +16,6 @@ import {
   Zap,
   Play,
   UserCheck,
-  CheckSquare,
-  ShieldCheck,
   ArrowUpRight
 } from 'lucide-react';
 import {
