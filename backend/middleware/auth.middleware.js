@@ -16,7 +16,8 @@ const protect = (req, res, next) => {
       // Attach decoded payload to request
       req.user = {
         id: decoded.id,
-        role: decoded.role
+        role: decoded.role,
+        permissions: decoded.permissions || []
       };
 
       return next();
@@ -36,4 +37,28 @@ const protect = (req, res, next) => {
   }
 };
 
-module.exports = protect;
+const authorize = (...requiredPermissions) => {
+  return (req, res, next) => {
+    if (!req.user || !req.user.permissions) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden, no permissions found'
+      });
+    }
+
+    const hasPermission = requiredPermissions.some(permission => 
+      req.user.permissions.includes(permission) || req.user.permissions.includes('*')
+    );
+
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden, insufficient permissions'
+      });
+    }
+
+    next();
+  };
+};
+
+module.exports = { protect, authorize };

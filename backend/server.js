@@ -4,6 +4,8 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 
 const authRoutes = require('./routes/auth.routes');
+const roleRoutes = require('./routes/role.routes');
+const userRoutes = require('./routes/user.routes');
 const vehicleRoutes = require('./routes/vehicle.routes');
 const driverRoutes = require('./routes/driver.routes');
 const tripRoutes = require('./routes/trip.routes');
@@ -11,6 +13,7 @@ const maintenanceRoutes = require('./routes/maintenance.routes');
 const fuelLogRoutes = require('./routes/fuelLog.routes');
 const expenseRoutes = require('./routes/expense.routes');
 const errorHandler = require('./middleware/error.middleware');
+const setupSwagger = require('./config/swagger');
 
 // Connect to Database
 connectDB();
@@ -21,8 +24,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Setup Swagger
+setupSwagger(app);
+
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/roles', roleRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/drivers', driverRoutes);
 app.use('/api/trips', tripRoutes);

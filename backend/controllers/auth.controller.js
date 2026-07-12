@@ -2,9 +2,9 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
 // Helper function to sign JWT tokens
-const generateToken = (id, role) => {
+const generateToken = (id, role, permissions) => {
   return jwt.sign(
-    { id, role },
+    { id, role, permissions },
     process.env.JWT_SECRET || 'your_jwt_secret_key_here',
     { expiresIn: '7d' }
   );
@@ -15,7 +15,7 @@ const generateToken = (id, role) => {
 // @access  Public
 const register = async (req, res, next) => {
   try {
-    const { fullName, email, password, role } = req.body;
+    const { firstName, lastName, email, password, role, mobile, address } = req.body;
 
     // Check if email already registered
     const userExists = await User.findOne({ email });
@@ -27,12 +27,17 @@ const register = async (req, res, next) => {
     }
 
     // Create and save new user
-    const user = await User.create({
-      fullName,
+    let user = await User.create({
+      firstName,
+      lastName,
       email,
       password,
-      role
+      role,
+      mobile,
+      address
     });
+
+    user = await user.populate('role');
 
     res.status(201).json({
       success: true,
@@ -40,9 +45,13 @@ const register = async (req, res, next) => {
       data: {
         user: {
           id: user._id,
-          fullName: user.fullName,
+          firstName: user.firstName,
+          lastName: user.lastName,
           email: user.email,
           role: user.role,
+          mobile: user.mobile,
+          address: user.address,
+          profilePicture: user.profilePicture,
           isActive: user.isActive,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt
@@ -61,8 +70,8 @@ const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    // Locate the user
-    const user = await User.findOne({ email });
+    // Locate the user and populate role to get permissions
+    const user = await User.findOne({ email }).populate('role');
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -87,8 +96,11 @@ const login = async (req, res, next) => {
       });
     }
 
+    // Extract permissions for token payload
+    const permissions = user.role && user.role.permissions ? user.role.permissions : [];
+
     // Generate JWT token
-    const token = generateToken(user._id, user.role);
+    const token = generateToken(user._id, user.role?._id, permissions);
 
     res.status(200).json({
       success: true,
@@ -97,9 +109,13 @@ const login = async (req, res, next) => {
         token,
         user: {
           id: user._id,
-          fullName: user.fullName,
+          firstName: user.firstName,
+          lastName: user.lastName,
           email: user.email,
-          role: user.role,
+          role: user.role, // Contains the full populated role object
+          profilePicture: user.profilePicture,
+          mobile: user.mobile,
+          address: user.address,
           isActive: user.isActive,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt

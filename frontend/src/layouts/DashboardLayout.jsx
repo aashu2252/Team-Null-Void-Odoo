@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import usePermissions from '../hooks/usePermissions';
 import AIAssistant from '../components/AIAssistant';
 import {
   LayoutDashboard,
@@ -36,7 +37,7 @@ export default function DashboardLayout() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [activeOrg, setActiveOrg] = useState('Apex Logistics Inc.');
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
-  
+
   const { user, logout } = useAuth();
   const { theme, toggleTheme, isDark } = useTheme();
   const location = useLocation();
@@ -53,47 +54,29 @@ export default function DashboardLayout() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const menuSections = [
-    {
-      title: 'General',
-      items: [
-        { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard }
-      ]
-    },
-    {
-      title: 'Fleet & Personnel',
-      items: [
-        { name: 'Vehicles', path: '/dashboard/vehicles', icon: Truck },
-        { name: 'Drivers', path: '/dashboard/drivers', icon: Users },
-        { name: 'Trips', path: '/dashboard/trips', icon: Route }
-      ]
-    },
-    {
-      title: 'Operations',
-      items: [
-        { name: 'Maintenance', path: '/dashboard/maintenance', icon: Wrench },
-        { name: 'Fuel Logs', path: '/dashboard/fuel-logs', icon: Fuel },
-        { name: 'Expenses', path: '/dashboard/expenses', icon: CreditCard }
-      ]
-    },
-    {
-      title: 'Analytics & Admin',
-      items: [
-        { name: 'Reports', path: '/dashboard/reports', icon: FileBarChart },
-        { name: 'Settings', path: '/dashboard/settings', icon: Settings }
-      ]
-    }
+  const { hasPermission } = usePermissions();
+
+  const allMenuItems = [
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, requiredPermission: 'dashboard.view' },
+    { name: 'Fleet', path: '/dashboard/vehicles', icon: Truck, requiredPermission: 'vehicle.view' },
+    { name: 'Drivers', path: '/dashboard/drivers', icon: Users, requiredPermission: 'driver.view' },
+    { name: 'Trips', path: '/dashboard/trips', icon: Route, requiredPermission: 'trip.view' },
+    { name: 'Maintenance', path: '/dashboard/maintenance', icon: Wrench, requiredPermission: 'maintenance.view' },
+    { name: 'Fuel & Expenses', path: '/dashboard/expenses', icon: Fuel, requiredPermission: 'expense.view' },
+    { name: 'Analytics', path: '/dashboard/reports', icon: FileBarChart, requiredPermission: 'dashboard.view' },
+    { name: 'Settings', path: '/dashboard/settings', icon: Settings, requiredPermission: '*' } // Only super admins for now or add a specific setting permission
   ];
+
+  const menuItems = allMenuItems.filter(item => hasPermission(item.requiredPermission) || hasPermission('*'));
 
   const commandPaletteItems = [
     { name: 'Go to Dashboard', shortcut: 'G + D', action: () => navigate('/dashboard') },
-    { name: 'View Vehicles', shortcut: 'G + V', action: () => navigate('/dashboard/vehicles') },
+    { name: 'View Fleet', shortcut: 'G + F', action: () => navigate('/dashboard/vehicles') },
     { name: 'View Drivers', shortcut: 'G + DR', action: () => navigate('/dashboard/drivers') },
     { name: 'Dispatch New Trip', shortcut: 'G + T', action: () => navigate('/dashboard/trips') },
-    { name: 'Check Maintenance Status', shortcut: 'G + M', action: () => navigate('/dashboard/maintenance') },
-    { name: 'Check Fuel Logs', shortcut: 'G + F', action: () => navigate('/dashboard/fuel-logs') },
-    { name: 'Check Expenses', shortcut: 'G + E', action: () => navigate('/dashboard/expenses') },
-    { name: 'Generate Reports', shortcut: 'G + R', action: () => navigate('/dashboard/reports') },
+    { name: 'Check Maintenance', shortcut: 'G + M', action: () => navigate('/dashboard/maintenance') },
+    { name: 'Check Fuel & Expenses', shortcut: 'G + E', action: () => navigate('/dashboard/expenses') },
+    { name: 'View Analytics', shortcut: 'G + A', action: () => navigate('/dashboard/reports') },
     { name: 'Settings Center', shortcut: 'G + S', action: () => navigate('/dashboard/settings') },
     { name: 'Toggle Dark/Light Theme', shortcut: 'T + T', action: () => toggleTheme() },
   ];
@@ -110,11 +93,10 @@ export default function DashboardLayout() {
 
   return (
     <div className="flex h-screen bg-bg-app text-txt-primary overflow-hidden transition-colors duration-300">
-      
+
       {/* Sidebar for Desktop */}
-      <aside className={`hidden lg:flex flex-col justify-between bg-sidebar-bg border-r border-border-custom transition-all duration-350 z-20 shrink-0 ${
-        collapsed ? 'w-20' : 'w-64'
-      }`}>
+      <aside className={`hidden lg:flex flex-col justify-between bg-sidebar-bg border-r border-border-custom transition-all duration-350 z-20 shrink-0 ${collapsed ? 'w-20' : 'w-64'
+        }`}>
         <div className="flex flex-col flex-1 overflow-y-auto px-4 py-6">
           {/* Logo Header */}
           <div className="flex items-center gap-3 mb-8 px-2 select-none justify-between">
@@ -133,45 +115,33 @@ export default function DashboardLayout() {
             </div>
           </div>
 
-          {/* Menu Sections */}
-          <div className="space-y-6">
-            {menuSections.map((section, secIdx) => (
-              <div key={secIdx} className="space-y-1.5">
-                {!collapsed && (
-                  <p className="text-[10px] font-bold text-txt-muted uppercase tracking-widest px-3">
-                    {section.title}
-                  </p>
-                )}
-                <div className="space-y-0.5">
-                  {section.items.map((item, itemIdx) => {
-                    const IconComponent = item.icon;
-                    const isActive = location.pathname === item.path;
-                    return (
-                      <Link
-                        key={itemIdx}
-                        to={item.path}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 relative ${
-                          isActive
-                            ? 'bg-brand-primary/10 text-brand-primary font-semibold'
-                            : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
-                        }`}
-                        title={collapsed ? item.name : undefined}
-                      >
-                        {isActive && (
-                          <motion.div
-                            layoutId="activeIndicator"
-                            className="absolute left-0 w-1 h-6 bg-brand-primary rounded-r-md"
-                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                          />
-                        )}
-                        <IconComponent className={`w-5 h-5 shrink-0 ${isActive ? 'text-brand-primary' : 'text-txt-secondary'}`} />
-                        {!collapsed && <span className="text-xs">{item.name}</span>}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+          {/* Menu Items */}
+          <div className="space-y-1.5">
+            {menuItems.map((item, itemIdx) => {
+              const IconComponent = item.icon;
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={itemIdx}
+                  to={item.path}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 relative ${isActive
+                      ? 'bg-brand-primary/10 text-brand-primary font-semibold'
+                      : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
+                    }`}
+                  title={collapsed ? item.name : undefined}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeIndicator"
+                      className="absolute left-0 w-1 h-6 bg-brand-primary rounded-r-md"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  <IconComponent className={`w-5 h-5 shrink-0 ${isActive ? 'text-brand-primary' : 'text-txt-secondary'}`} />
+                  {!collapsed && <span className="text-sm font-medium">{item.name}</span>}
+                </Link>
+              );
+            })}
           </div>
         </div>
 
@@ -200,7 +170,7 @@ export default function DashboardLayout() {
 
       {/* Main View Area */}
       <div className="flex-1 flex flex-col overflow-hidden w-full">
-        
+
         {/* Sticky Glass Navbar */}
         <header className="h-16 border-b border-border-custom bg-card-bg/85 backdrop-blur-[18px] flex items-center justify-between px-6 z-30 shadow-sm shrink-0">
           <div className="flex items-center gap-4">
@@ -241,7 +211,7 @@ export default function DashboardLayout() {
                 </>
               )}
             </div>
-            
+
             <button
               onClick={() => setCollapsed(!collapsed)}
               className="hidden lg:block p-1.5 rounded-lg text-txt-secondary hover:text-txt-primary hover:bg-surface transition-colors cursor-pointer"
@@ -251,82 +221,28 @@ export default function DashboardLayout() {
             </button>
           </div>
 
-          {/* Search, Notifications & Theme Toggle */}
-          <div className="flex items-center gap-4">
-            
-            {/* Search Input triggering command palette */}
-            <div
-              onClick={() => setShowPalette(true)}
-              className="hidden md:flex items-center gap-2 bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-1.5 cursor-pointer text-xs text-txt-muted hover:border-brand-primary transition-all duration-200 select-none min-w-[220px]"
-            >
-              <Search className="w-3.5 h-3.5 text-txt-secondary" />
-              <span>Search / Command...</span>
-              <kbd className="ml-auto bg-card-bg border border-border-custom px-1.5 py-0.5 rounded text-[10px] font-mono flex items-center gap-0.5 text-txt-secondary">
-                <Keyboard className="w-2.5 h-2.5" />
-                <span>K</span>
-              </kbd>
-            </div>
-
-            {/* Theme Switcher Toggle */}
+          <div className="flex items-center gap-6">
+            {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-xl text-txt-secondary hover:text-txt-primary hover:bg-surface transition-all duration-250 cursor-pointer"
-              title="Toggle Theme"
+              className="p-2 rounded-xl text-txt-secondary hover:text-txt-primary hover:bg-surface transition-colors focus:outline-none"
+              title={`Switch to ${isDark ? 'light' : 'dark'} theme`}
             >
-              {isDark ? <Sun className="w-4 h-4 text-brand-warning" /> : <Moon className="w-4 h-4 text-brand-primary" />}
+              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
 
-            {/* Notifications Trigger */}
-            <div className="relative">
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2 rounded-xl text-txt-secondary hover:text-txt-primary hover:bg-surface transition-colors relative cursor-pointer"
-              >
-                <Bell className="w-4 h-4" />
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand-danger animate-pulse" />
-              </button>
-
-              <AnimatePresence>
-                {showNotifications && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute right-0 mt-2 w-80 bg-card-bg border border-border-custom rounded-2xl shadow-xl z-50 overflow-hidden"
-                    >
-                      <div className="p-3 bg-surface/50 border-b border-border-custom flex justify-between items-center">
-                        <span className="text-xs font-bold text-txt-primary">Recent Notifications</span>
-                        <span className="text-[10px] text-brand-primary font-semibold hover:underline cursor-pointer">Clear all</span>
-                      </div>
-                      <div className="p-1.5 divide-y divide-border-custom/50">
-                        {notifications.map((notif) => (
-                          <div key={notif.id} className="p-2.5 hover:bg-surface/30 transition-colors flex gap-2">
-                            <div className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${
-                              notif.type === 'error' ? 'bg-brand-danger' : notif.type === 'warning' ? 'bg-brand-warning' : 'bg-brand-success'
-                            }`} />
-                            <div>
-                              <p className="text-[11px] font-medium text-txt-primary leading-tight">{notif.text}</p>
-                              <span className="text-[9px] text-txt-muted mt-1 block">{notif.time}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Profile Avatar */}
-            <div className="flex items-center gap-2.5 border-l border-border-custom pl-4">
-              <div className="h-8 w-8 rounded-full bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center font-bold text-brand-primary text-xs select-none">
-                {user?.fullName ? user.fullName.substring(0, 2).toUpperCase() : 'TO'}
+            {/* User credentials */}
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-cyan-400 text-sm shadow-inner">
+                {user?.firstName ? user.firstName.substring(0, 1).toUpperCase() + (user.lastName ? user.lastName.substring(0, 1).toUpperCase() : '') : 'TO'}
               </div>
               <div className="hidden sm:block text-left">
-                <p className="text-xs font-bold text-txt-primary leading-none">{user?.fullName || 'John Doe'}</p>
-                <p className="text-[9px] text-txt-secondary font-mono mt-0.5">{user?.role || 'Operations Lead'}</p>
+                <p className="text-xs font-semibold text-slate-200">
+                  {user?.firstName ? `${user.firstName} ${user.lastName}` : 'John Doe'}
+                </p>
+                <p className="text-[10px] text-slate-500 font-mono">
+                  {user?.role?.name || user?.role || 'Dispatcher'}
+                </p>
               </div>
             </div>
 
@@ -369,7 +285,7 @@ export default function DashboardLayout() {
                   ESC
                 </button>
               </div>
-              
+
               <div className="max-h-[300px] overflow-y-auto p-2 space-y-1">
                 {filteredPaletteItems.length > 0 ? (
                   filteredPaletteItems.map((item, idx) => (
@@ -410,7 +326,7 @@ export default function DashboardLayout() {
               className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
               onClick={() => setMobileMenuOpen(false)}
             />
-            
+
             <motion.div
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
@@ -433,37 +349,27 @@ export default function DashboardLayout() {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-6">
-                {menuSections.map((section, secIdx) => (
-                  <div key={secIdx} className="space-y-1.5">
-                    <p className="text-[9px] font-bold text-txt-muted uppercase tracking-widest px-2">
-                      {section.title}
-                    </p>
-                    <div className="space-y-0.5">
-                      {section.items.map((item, itemIdx) => {
-                        const IconComponent = item.icon;
-                        const isActive = location.pathname === item.path;
-                        return (
-                          <Link
-                            key={itemIdx}
-                            to={item.path}
-                            onClick={() => setMobileMenuOpen(false)}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 ${
-                              isActive
-                                ? 'bg-brand-primary/10 text-brand-primary font-semibold'
-                                : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
-                            }`}
-                          >
-                            <IconComponent className={`w-5 h-5 ${isActive ? 'text-brand-primary' : 'text-txt-secondary'}`} />
-                            <span className="text-xs">{item.name}</span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+              <div className="flex-1 overflow-y-auto space-y-1.5 mt-4">
+                {menuItems.map((item, itemIdx) => {
+                  const IconComponent = item.icon;
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={itemIdx}
+                      to={item.path}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 ${isActive
+                          ? 'bg-brand-primary/10 text-brand-primary font-semibold'
+                          : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
+                        }`}
+                    >
+                      <IconComponent className={`w-5 h-5 ${isActive ? 'text-brand-primary' : 'text-txt-secondary'}`} />
+                      <span className="text-xs font-medium">{item.name}</span>
+                    </Link>
+                  );
+                })}
               </div>
-              
+
               <div className="pt-4 border-t border-border-custom">
                 <button
                   onClick={() => { logout(); setMobileMenuOpen(false); }}

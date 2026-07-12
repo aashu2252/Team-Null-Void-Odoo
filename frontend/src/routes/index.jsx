@@ -13,6 +13,11 @@ import Reports from '../pages/Reports';
 import Settings from '../pages/Settings';
 import ProtectedRoute from './ProtectedRoute';
 import DashboardLayout from '../layouts/DashboardLayout';
+import AdminLayout from '../layouts/AdminLayout';
+import AdminDashboard from '../pages/admin/AdminDashboard';
+import RoleManagement from '../pages/admin/RoleManagement';
+import UserManagement from '../pages/admin/UserManagement';
+import AdminLogin from '../pages/admin/AdminLogin';
 
 export default function AppRoutes() {
   return (
@@ -23,6 +28,7 @@ export default function AppRoutes() {
       {/* Public routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/admin/login" element={<AdminLogin />} />
       
       {/* Protected routes */}
       <Route element={<ProtectedRoute />}>
@@ -37,8 +43,13 @@ export default function AppRoutes() {
           <Route path="/dashboard/reports" element={<Reports />} />
           <Route path="/dashboard/settings" element={<Settings />} />
         </Route>
+
+        <Route element={<AdminLayout />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/users" element={<UserManagement />} />
+          <Route path="/admin/roles" element={<RoleManagement />} />
+        </Route>
       </Route>
-      
       {/* Catch-all redirect */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

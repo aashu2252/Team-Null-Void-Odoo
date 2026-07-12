@@ -7,7 +7,7 @@ const {
   updateFuelLog,
   deleteFuelLog
 } = require('../controllers/fuelLog.controller');
-const protect = require('../middleware/auth.middleware');
+const { protect } = require('../middleware/auth.middleware');
 
 // Protect all endpoints in this router using the existing JWT authentication middleware
 router.use(protect);
