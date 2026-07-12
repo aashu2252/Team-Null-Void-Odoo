@@ -67,10 +67,12 @@ const createExpense = async (req, res) => {
       date
     });
 
+    const populatedExpense = await Expense.findById(expense._id).populate('vehicle').populate('trip');
+
     return res.status(201).json({
       success: true,
       message: 'Expense created successfully',
-      data: expense
+      data: populatedExpense
     });
   } catch (error) {
     return res.status(500).json({
@@ -259,10 +261,12 @@ const updateExpense = async (req, res) => {
 
     const updatedExpense = await expense.save();
 
+    const populatedExpense = await Expense.findById(updatedExpense._id).populate('vehicle').populate('trip');
+
     return res.status(200).json({
       success: true,
       message: 'Expense updated successfully',
-      data: updatedExpense
+      data: populatedExpense
     });
   } catch (error) {
     return res.status(500).json({

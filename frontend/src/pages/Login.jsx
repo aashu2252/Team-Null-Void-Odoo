@@ -15,7 +15,7 @@ const LoginSchema = z.object({
   password: z.string({
     required_error: 'Password is required'
   }).min(6, 'Password is too short'),
-  role: z.enum(['Super Admin', 'Dispatcher', 'Fleet Manager', 'Safety Officer', 'Financial Analyst'], {
+  role: z.enum(['Dispatcher', 'Fleet Manager', 'Safety Officer', 'Financial Analyst'], {
     required_error: 'Operator role is required'
   })
 });
@@ -160,9 +160,8 @@ export default function Login() {
             <h2 className="text-xl font-bold text-txt-primary">Account Authentication</h2>
             <p className="text-xs text-txt-secondary">Enter credentials registered on your Active Directory workspace.</p>
           </div>
-
           <Formik
-            initialValues={{ email: '', password: '', role: 'Super Admin' }}
+            initialValues={{ email: '', password: '', role: 'Dispatcher' }}
             validate={validateWithZod(LoginSchema)}
             onSubmit={handleLoginSubmit}
           >
@@ -180,7 +179,6 @@ export default function Login() {
                       name="role"
                       className="block w-full rounded-xl bg-card-bg border border-border-custom text-txt-primary px-10 py-2.5 text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary cursor-pointer"
                     >
-                      <option value="Super Admin">Super Admin</option>
                       <option value="Dispatcher">Dispatcher</option>
                       <option value="Fleet Manager">Fleet Manager</option>
                       <option value="Safety Officer">Safety Officer</option>
@@ -290,14 +288,7 @@ export default function Login() {
             )}
           </Formik>
 
-          <div className="text-center">
-            <p className="text-xs text-txt-secondary">
-              New to the platform?{' '}
-              <Link to="/register" className="font-bold text-brand-primary hover:underline transition-colors">
-                Register Workspace
-              </Link>
-            </p>
-          </div>
+
         </div>
 
         {/* Footer Support link */}
