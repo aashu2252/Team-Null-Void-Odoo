@@ -1,138 +1,171 @@
-import React, { useState } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import AIAssistant from '../components/AIAssistant';
+import {
+  LayoutDashboard,
+  Truck,
+  Users,
+  Route,
+  Wrench,
+  Fuel,
+  CreditCard,
+  FileBarChart,
+  Settings,
+  Bell,
+  Search,
+  MessageSquare,
+  ChevronDown,
+  Moon,
+  Sun,
+  Menu,
+  X,
+  Keyboard,
+  LogOut,
+  Sparkles,
+  Command
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showPalette, setShowPalette] = useState(false);
+  const [paletteSearch, setPaletteSearch] = useState('');
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [activeOrg, setActiveOrg] = useState('Apex Logistics Inc.');
+  const [showOrgDropdown, setShowOrgDropdown] = useState(false);
+  
   const { user, logout } = useAuth();
+  const { theme, toggleTheme, isDark } = useTheme();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowPalette((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const menuSections = [
     {
       title: 'General',
       items: [
-        { name: 'Dashboard', path: '/dashboard', icon: (
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
-          </svg>
-        )}
+        { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard }
       ]
     },
     {
-      title: 'Fleet',
+      title: 'Fleet & Personnel',
       items: [
-        { name: 'Vehicles', path: '/dashboard/vehicles', icon: (
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
-          </svg>
-        )},
-        { name: 'Drivers', path: '/dashboard/drivers', icon: (
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-          </svg>
-        )},
-        { name: 'Trips', path: '/dashboard/trips', icon: (
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-          </svg>
-        )}
+        { name: 'Vehicles', path: '/dashboard/vehicles', icon: Truck },
+        { name: 'Drivers', path: '/dashboard/drivers', icon: Users },
+        { name: 'Trips', path: '/dashboard/trips', icon: Route }
       ]
     },
     {
       title: 'Operations',
       items: [
-        { name: 'Maintenance', path: '/dashboard/maintenance', icon: (
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        )},
-        { name: 'Fuel Logs', path: '/dashboard/fuel-logs', icon: (
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 9.172V5L8 4z" />
-          </svg>
-        )},
-        { name: 'Expenses', path: '/dashboard/expenses', icon: (
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        )}
+        { name: 'Maintenance', path: '/dashboard/maintenance', icon: Wrench },
+        { name: 'Fuel Logs', path: '/dashboard/fuel-logs', icon: Fuel },
+        { name: 'Expenses', path: '/dashboard/expenses', icon: CreditCard }
       ]
     },
     {
-      title: 'Analytics',
+      title: 'Analytics & Admin',
       items: [
-        { name: 'Reports', path: '/dashboard/reports', icon: (
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10a2 2 0 01-2 2h-2a2 2 0 01-2-2zm9-1h2a2 2 0 002-2v-3a2 2 0 00-2-2h-2a2 2 0 00-2 2v3a2 2 0 002 2z" />
-          </svg>
-        )}
-      ]
-    },
-    {
-      title: 'Administration',
-      items: [
-        { name: 'Settings', path: '/dashboard/settings', icon: (
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-          </svg>
-        )}
+        { name: 'Reports', path: '/dashboard/reports', icon: FileBarChart },
+        { name: 'Settings', path: '/dashboard/settings', icon: Settings }
       ]
     }
   ];
 
+  const commandPaletteItems = [
+    { name: 'Go to Dashboard', shortcut: 'G + D', action: () => navigate('/dashboard') },
+    { name: 'View Vehicles', shortcut: 'G + V', action: () => navigate('/dashboard/vehicles') },
+    { name: 'View Drivers', shortcut: 'G + DR', action: () => navigate('/dashboard/drivers') },
+    { name: 'Dispatch New Trip', shortcut: 'G + T', action: () => navigate('/dashboard/trips') },
+    { name: 'Check Maintenance Status', shortcut: 'G + M', action: () => navigate('/dashboard/maintenance') },
+    { name: 'Check Fuel Logs', shortcut: 'G + F', action: () => navigate('/dashboard/fuel-logs') },
+    { name: 'Check Expenses', shortcut: 'G + E', action: () => navigate('/dashboard/expenses') },
+    { name: 'Generate Reports', shortcut: 'G + R', action: () => navigate('/dashboard/reports') },
+    { name: 'Settings Center', shortcut: 'G + S', action: () => navigate('/dashboard/settings') },
+    { name: 'Toggle Dark/Light Theme', shortcut: 'T + T', action: () => toggleTheme() },
+  ];
+
+  const filteredPaletteItems = commandPaletteItems.filter((item) =>
+    item.name.toLowerCase().includes(paletteSearch.toLowerCase())
+  );
+
+  const notifications = [
+    { id: 1, text: 'Alert: Trip TRK-109 is delayed near Philadelphia', type: 'error', time: '10m ago' },
+    { id: 2, text: 'Maintenance: Engine Check due for VH-204', type: 'warning', time: '1h ago' },
+    { id: 3, text: 'Safety Score: Driver Marcus Vance hit 98% rating!', type: 'success', time: '4h ago' }
+  ];
+
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
+    <div className="flex h-screen bg-bg-app text-txt-primary overflow-hidden transition-colors duration-300">
       
-      {/* Sidebar Layout */}
-      <aside className={`bg-slate-900 border-r border-slate-800 flex flex-col justify-between transition-all duration-200 ${
+      {/* Sidebar for Desktop */}
+      <aside className={`hidden lg:flex flex-col justify-between bg-sidebar-bg border-r border-border-custom transition-all duration-350 z-20 shrink-0 ${
         collapsed ? 'w-20' : 'w-64'
       }`}>
         <div className="flex flex-col flex-1 overflow-y-auto px-4 py-6">
           {/* Logo Header */}
-          <div className="flex items-center gap-3 mb-8 cursor-pointer select-none">
-            <div className="h-10 w-10 min-w-[40px] rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-              <span className="text-xl font-bold text-white">TO</span>
-            </div>
-            {!collapsed && (
-              <div>
-                <h1 className="text-md font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-                  TransitOps
-                </h1>
-                <p className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider">ERP Platform</p>
+          <div className="flex items-center gap-3 mb-8 px-2 select-none justify-between">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/dashboard')}>
+              <div className="h-10 w-10 min-w-[40px] rounded-xl bg-gradient-to-tr from-brand-primary to-brand-teal flex items-center justify-center shadow-lg shadow-brand-primary/25">
+                <Sparkles className="w-5 h-5 text-white" />
               </div>
-            )}
+              {!collapsed && (
+                <div>
+                  <h1 className="text-md font-bold tracking-tight text-txt-primary">
+                    TransitOps
+                  </h1>
+                  <p className="text-[10px] text-brand-teal font-bold uppercase tracking-wider">Console Center</p>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Collapsible Menu Lists */}
+          {/* Menu Sections */}
           <div className="space-y-6">
             {menuSections.map((section, secIdx) => (
-              <div key={secIdx} className="space-y-2">
-                {/* Header label for groups */}
+              <div key={secIdx} className="space-y-1.5">
                 {!collapsed && (
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3">
+                  <p className="text-[10px] font-bold text-txt-muted uppercase tracking-widest px-3">
                     {section.title}
                   </p>
                 )}
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {section.items.map((item, itemIdx) => {
+                    const IconComponent = item.icon;
                     const isActive = location.pathname === item.path;
                     return (
                       <Link
                         key={itemIdx}
                         to={item.path}
-                        className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 ${
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 relative ${
                           isActive
-                            ? 'bg-slate-800/80 text-cyan-400 font-semibold shadow-inner border-l-4 border-cyan-500'
-                            : 'text-slate-450 hover:bg-slate-800/40 hover:text-slate-200'
+                            ? 'bg-brand-primary/10 text-brand-primary font-semibold'
+                            : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
                         }`}
                         title={collapsed ? item.name : undefined}
                       >
-                        <div className={`transition-transform duration-100 ${isActive ? 'scale-105' : 'text-slate-450'}`}>
-                          {item.icon}
-                        </div>
-                        {!collapsed && <span className="text-sm">{item.name}</span>}
+                        {isActive && (
+                          <motion.div
+                            layoutId="activeIndicator"
+                            className="absolute left-0 w-1 h-6 bg-brand-primary rounded-r-md"
+                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                          />
+                        )}
+                        <IconComponent className={`w-5 h-5 shrink-0 ${isActive ? 'text-brand-primary' : 'text-txt-secondary'}`} />
+                        {!collapsed && <span className="text-xs">{item.name}</span>}
                       </Link>
                     );
                   })}
@@ -142,67 +175,308 @@ export default function DashboardLayout() {
           </div>
         </div>
 
-        {/* Sidebar Footer collapse toggle */}
-        <div className="p-4 border-t border-slate-850 flex justify-end">
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-850 transition-colors duration-100 active:scale-95"
-            title={collapsed ? "Expand menu" : "Collapse menu"}
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              {collapsed ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7M19 19l-7-7 7-7" />
-              )}
-            </svg>
-          </button>
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-border-custom flex items-center justify-between">
+          {!collapsed && (
+            <button
+              onClick={logout}
+              className="flex items-center gap-2 text-xs font-semibold text-brand-danger hover:bg-brand-danger/10 px-3 py-2 rounded-xl transition-colors cursor-pointer w-full text-left"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sign Out</span>
+            </button>
+          )}
+          {collapsed && (
+            <button
+              onClick={logout}
+              className="text-brand-danger hover:bg-brand-danger/10 p-2.5 rounded-xl transition-colors cursor-pointer mx-auto"
+              title="Sign Out"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          )}
         </div>
       </aside>
 
-      {/* Main Panel Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Main View Area */}
+      <div className="flex-1 flex flex-col overflow-hidden w-full">
         
-        {/* Navbar */}
-        <header className="h-16 border-b border-slate-800 bg-slate-900/60 backdrop-blur-md flex items-center justify-between px-8 z-10">
+        {/* Sticky Glass Navbar */}
+        <header className="h-16 border-b border-border-custom bg-card-bg/85 backdrop-blur-[18px] flex items-center justify-between px-6 z-30 shadow-sm shrink-0">
           <div className="flex items-center gap-4">
-            <h2 className="text-sm font-bold text-slate-300 select-none">
-              TransitOps Console
-            </h2>
+            {/* Mobile Hamburger menu */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 rounded-xl text-txt-secondary hover:text-txt-primary hover:bg-surface transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            {/* Org Switcher */}
+            <div className="relative">
+              <button
+                onClick={() => setShowOrgDropdown(!showOrgDropdown)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-surface text-xs font-bold tracking-tight text-txt-primary transition-colors cursor-pointer select-none border border-border-custom/50"
+              >
+                <span>{activeOrg}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-txt-secondary" />
+              </button>
+              {showOrgDropdown && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowOrgDropdown(false)} />
+                  <div className="absolute left-0 mt-2 w-48 bg-card-bg border border-border-custom rounded-xl shadow-xl z-50 py-1.5">
+                    <button
+                      onClick={() => { setActiveOrg('Apex Logistics Inc.'); setShowOrgDropdown(false); }}
+                      className="w-full text-left px-4 py-2 text-xs hover:bg-surface font-semibold"
+                    >
+                      Apex Logistics Inc.
+                    </button>
+                    <button
+                      onClick={() => { setActiveOrg('TransitOps West Coast'); setShowOrgDropdown(false); }}
+                      className="w-full text-left px-4 py-2 text-xs hover:bg-surface font-semibold"
+                    >
+                      TransitOps West Coast
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+            
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="hidden lg:block p-1.5 rounded-lg text-txt-secondary hover:text-txt-primary hover:bg-surface transition-colors cursor-pointer"
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              <Command className="w-4 h-4" />
+            </button>
           </div>
 
-          <div className="flex items-center gap-6">
-            {/* User credentials */}
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-cyan-400 text-sm shadow-inner">
+          {/* Search, Notifications & Theme Toggle */}
+          <div className="flex items-center gap-4">
+            
+            {/* Search Input triggering command palette */}
+            <div
+              onClick={() => setShowPalette(true)}
+              className="hidden md:flex items-center gap-2 bg-surface dark:bg-card-elevated border border-border-custom/80 rounded-xl px-3 py-1.5 cursor-pointer text-xs text-txt-muted hover:border-brand-primary transition-all duration-200 select-none min-w-[220px]"
+            >
+              <Search className="w-3.5 h-3.5 text-txt-secondary" />
+              <span>Search / Command...</span>
+              <kbd className="ml-auto bg-card-bg border border-border-custom px-1.5 py-0.5 rounded text-[10px] font-mono flex items-center gap-0.5 text-txt-secondary">
+                <Keyboard className="w-2.5 h-2.5" />
+                <span>K</span>
+              </kbd>
+            </div>
+
+            {/* Theme Switcher Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-xl text-txt-secondary hover:text-txt-primary hover:bg-surface transition-all duration-250 cursor-pointer"
+              title="Toggle Theme"
+            >
+              {isDark ? <Sun className="w-4 h-4 text-brand-warning" /> : <Moon className="w-4 h-4 text-brand-primary" />}
+            </button>
+
+            {/* Notifications Trigger */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-2 rounded-xl text-txt-secondary hover:text-txt-primary hover:bg-surface transition-colors relative cursor-pointer"
+              >
+                <Bell className="w-4 h-4" />
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand-danger animate-pulse" />
+              </button>
+
+              <AnimatePresence>
+                {showNotifications && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute right-0 mt-2 w-80 bg-card-bg border border-border-custom rounded-2xl shadow-xl z-50 overflow-hidden"
+                    >
+                      <div className="p-3 bg-surface/50 border-b border-border-custom flex justify-between items-center">
+                        <span className="text-xs font-bold text-txt-primary">Recent Notifications</span>
+                        <span className="text-[10px] text-brand-primary font-semibold hover:underline cursor-pointer">Clear all</span>
+                      </div>
+                      <div className="p-1.5 divide-y divide-border-custom/50">
+                        {notifications.map((notif) => (
+                          <div key={notif.id} className="p-2.5 hover:bg-surface/30 transition-colors flex gap-2">
+                            <div className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${
+                              notif.type === 'error' ? 'bg-brand-danger' : notif.type === 'warning' ? 'bg-brand-warning' : 'bg-brand-success'
+                            }`} />
+                            <div>
+                              <p className="text-[11px] font-medium text-txt-primary leading-tight">{notif.text}</p>
+                              <span className="text-[9px] text-txt-muted mt-1 block">{notif.time}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Profile Avatar */}
+            <div className="flex items-center gap-2.5 border-l border-border-custom pl-4">
+              <div className="h-8 w-8 rounded-full bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center font-bold text-brand-primary text-xs select-none">
                 {user?.fullName ? user.fullName.substring(0, 2).toUpperCase() : 'TO'}
               </div>
               <div className="hidden sm:block text-left">
-                <p className="text-xs font-semibold text-slate-200">{user?.fullName || 'John Doe'}</p>
-                <p className="text-[10px] text-slate-500 font-mono">{user?.role || 'Dispatcher'}</p>
+                <p className="text-xs font-bold text-txt-primary leading-none">{user?.fullName || 'John Doe'}</p>
+                <p className="text-[9px] text-txt-secondary font-mono mt-0.5">{user?.role || 'Operations Lead'}</p>
               </div>
             </div>
 
-            <span className="text-slate-750">|</span>
-
-            {/* Logout button */}
-            <button
-              onClick={logout}
-              className="text-xs px-3.5 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white hover:border-slate-600 transition-all duration-100 active:scale-95 shadow-md flex items-center gap-1.5 font-semibold"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              Logout
-            </button>
           </div>
         </header>
 
-        {/* Content viewport */}
-        <main className="flex-1 overflow-y-auto p-8 bg-slate-950/20">
+        {/* Content Viewport */}
+        <main className="flex-1 overflow-y-auto p-6 pb-24 focus:outline-none max-w-[1680px] mx-auto w-full">
           <Outlet />
         </main>
       </div>
+
+      {/* Floating AI Operations Assistant */}
+      <AIAssistant />
+
+      {/* Command Palette Drawer / Modal */}
+      <AnimatePresence>
+        {showPalette && (
+          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-start justify-center pt-24 px-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-xl bg-card-bg border border-border-custom rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-3.5 border-b border-border-custom flex items-center gap-3">
+                <Search className="w-4 h-4 text-txt-secondary" />
+                <input
+                  type="text"
+                  value={paletteSearch}
+                  onChange={(e) => setPaletteSearch(e.target.value)}
+                  placeholder="Type a command or page name..."
+                  className="flex-1 bg-transparent border-none text-xs text-txt-primary placeholder-txt-muted focus:outline-none focus:ring-0"
+                  autoFocus
+                />
+                <button
+                  onClick={() => setShowPalette(false)}
+                  className="text-[10px] bg-surface px-2 py-1 rounded text-txt-secondary border border-border-custom cursor-pointer"
+                >
+                  ESC
+                </button>
+              </div>
+              
+              <div className="max-h-[300px] overflow-y-auto p-2 space-y-1">
+                {filteredPaletteItems.length > 0 ? (
+                  filteredPaletteItems.map((item, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        item.action();
+                        setShowPalette(false);
+                      }}
+                      className="w-full text-left flex justify-between items-center px-3.5 py-2.5 rounded-xl hover:bg-brand-primary/10 hover:text-brand-primary text-xs text-txt-secondary font-medium transition-colors cursor-pointer"
+                    >
+                      <span>{item.name}</span>
+                      <span className="text-[10px] font-mono text-txt-muted bg-surface/50 border border-border-custom px-2 py-0.5 rounded">
+                        {item.shortcut}
+                      </span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-xs text-txt-secondary">
+                    No results found for "{paletteSearch}"
+                  </div>
+                )}
+              </div>
+            </motion.div>
+            <div className="fixed inset-0 -z-10" onClick={() => setShowPalette(false)} />
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Drawer Navigation */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-50 flex lg:hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 20 }}
+              className="relative flex flex-col w-72 max-w-xs bg-sidebar-bg border-r border-border-custom p-6"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-brand-primary to-brand-teal flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-white" />
+                  </div>
+                  <h1 className="text-sm font-bold text-txt-primary">TransitOps</h1>
+                </div>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-1.5 rounded-xl hover:bg-surface text-txt-secondary hover:text-txt-primary"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-6">
+                {menuSections.map((section, secIdx) => (
+                  <div key={secIdx} className="space-y-1.5">
+                    <p className="text-[9px] font-bold text-txt-muted uppercase tracking-widest px-2">
+                      {section.title}
+                    </p>
+                    <div className="space-y-0.5">
+                      {section.items.map((item, itemIdx) => {
+                        const IconComponent = item.icon;
+                        const isActive = location.pathname === item.path;
+                        return (
+                          <Link
+                            key={itemIdx}
+                            to={item.path}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 ${
+                              isActive
+                                ? 'bg-brand-primary/10 text-brand-primary font-semibold'
+                                : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
+                            }`}
+                          >
+                            <IconComponent className={`w-5 h-5 ${isActive ? 'text-brand-primary' : 'text-txt-secondary'}`} />
+                            <span className="text-xs">{item.name}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="pt-4 border-t border-border-custom">
+                <button
+                  onClick={() => { logout(); setMobileMenuOpen(false); }}
+                  className="flex items-center gap-2 text-xs font-semibold text-brand-danger w-full hover:bg-brand-danger/10 px-3 py-2.5 rounded-xl"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
