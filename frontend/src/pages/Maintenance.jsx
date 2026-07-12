@@ -18,12 +18,7 @@ import { toast } from 'react-hot-toast';
 import api from '../services/api';
 
 export default function Maintenance() {
-  const [maintenanceLogs, setMaintenanceLogs] = useState([
-    { id: 'WO-804', vehicle: 'VH-104 (Hino 268)', description: 'Repair Service', title: 'Exhaust Leak Repair', priority: 'High', startDate: '2026-07-12', cost: 450.00, status: 'Active' },
-    { id: 'WO-803', vehicle: 'VH-106 (Freightliner)', description: 'Engine Overhaul', title: 'Full Engine Tuneup', priority: 'Urgent', startDate: '2026-07-10', cost: 1850.00, status: 'Active' },
-    { id: 'WO-802', vehicle: 'VH-101 (Volvo FH16)', description: 'Routine Care', title: 'Oil & Filter Replacement', priority: 'Medium', startDate: '2026-07-08', endDate: '2026-07-08', cost: 120.00, status: 'Completed' },
-    { id: 'WO-801', vehicle: 'VH-102 (Peterbilt 579)', description: 'Safety Test', title: 'Safety CDL Brake Test', priority: 'Low', startDate: '2026-07-05', endDate: '2026-07-05', cost: 75.00, status: 'Completed' }
-  ]);
+  const [maintenanceLogs, setMaintenanceLogs] = useState([]);
 
   const [documentChecks] = useState([
     { id: 'doc-1', title: 'Fitness Certificate (FMCRA)', status: 'Approved', expiry: 'Jan 15, 2027', icon: ShieldCheck, color: 'text-brand-success' },
@@ -53,8 +48,11 @@ export default function Maintenance() {
           api.get('/api/vehicles')
         ]);
 
-        if (mainRes.data?.success && mainRes.data.data.length > 0) {
-          const mapped = mainRes.data.data.map(m => ({
+        if (mainRes.data?.success) {
+          const rawRecords = Array.isArray(mainRes.data.data) 
+            ? mainRes.data.data 
+            : (mainRes.data.data?.maintenanceRecords || []);
+          const mapped = rawRecords.map(m => ({
             ...m,
             id: m.id || m._id,
             vehicle: m.vehicle?.vehicleName
@@ -66,7 +64,10 @@ export default function Maintenance() {
         }
 
         if (vehiclesRes.data?.success) {
-          setVehicleRefs(vehiclesRes.data.data.map(v => ({
+          const rawVehicles = Array.isArray(vehiclesRes.data.data) 
+            ? vehiclesRes.data.data 
+            : (vehiclesRes.data.data?.vehicles || []);
+          setVehicleRefs(rawVehicles.map(v => ({
             _id: v._id,
             label: `${v.registrationNumber} (${v.vehicleName})`
           })));

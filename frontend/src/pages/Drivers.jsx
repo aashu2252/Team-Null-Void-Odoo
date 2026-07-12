@@ -20,14 +20,7 @@ import { toast } from 'react-hot-toast';
 import api from '../services/api';
 
 export default function Drivers() {
-  const [drivers, setDrivers] = useState([
-    { id: 'DR-001', name: 'Marcus Vance', rating: 4.9, experience: '8 Years', licenseCategory: 'CDL Class A (Active)', licenseNumber: 'NJ-DL-8472918', licenseExpiryDate: '2027-06-15', safetyScore: 98, status: 'On Trip', trips: 412, email: 'm.vance@transitops.com', contactNumber: '(555) 019-2831' },
-    { id: 'DR-002', name: 'Sarah Jenkins', rating: 4.8, experience: '6 Years', licenseCategory: 'CDL Class A (Active)', licenseNumber: 'NY-DL-9182304', licenseExpiryDate: '2028-02-28', safetyScore: 95, status: 'On Trip', trips: 310, email: 's.jenkins@transitops.com', contactNumber: '(555) 018-8422' },
-    { id: 'DR-003', name: 'David Miller', rating: 4.7, experience: '5 Years', licenseCategory: 'CDL Class A (Active)', licenseNumber: 'PA-DL-7491024', licenseExpiryDate: '2026-11-12', safetyScore: 92, status: 'Available', trips: 284, email: 'd.miller@transitops.com', contactNumber: '(555) 014-9988' },
-    { id: 'DR-004', name: 'Carlos Ruiz', rating: 4.9, experience: '12 Years', licenseCategory: 'CDL Class A (Active)', licenseNumber: 'TX-DL-1102934', licenseExpiryDate: '2029-05-18', safetyScore: 99, status: 'On Trip', trips: 712, email: 'c.ruiz@transitops.com', contactNumber: '(555) 012-7411' },
-    { id: 'DR-005', name: 'Amanda Ross', rating: 4.5, experience: '4 Years', licenseCategory: 'CDL Class B (Active)', licenseNumber: 'CA-DL-5529104', licenseExpiryDate: '2027-10-30', safetyScore: 88, status: 'Off Duty', trips: 142, email: 'a.ross@transitops.com', contactNumber: '(555) 011-8291' },
-    { id: 'DR-006', name: 'James Taylor', rating: 4.6, experience: '7 Years', licenseCategory: 'CDL Class A (Expired)', licenseNumber: 'NJ-DL-0019283', licenseExpiryDate: '2026-06-01', safetyScore: 78, status: 'Suspended', trips: 395, email: 'j.taylor@transitops.com', contactNumber: '(555) 017-3810' }
-  ]);
+  const [drivers, setDrivers] = useState([]);
 
   // Fetch drivers from backend database on mount
   useEffect(() => {
@@ -35,18 +28,23 @@ export default function Drivers() {
       try {
         const res = await api.get('/api/drivers');
         if (res.data && res.data.success) {
-          const mapped = res.data.data.map(d => ({
-            ...d,
-            id: d.id || d._id.substring(d._id.length - 6),
-            rating: d.rating || 4.8,
-            trips: d.trips || Math.floor(Math.random() * 200) + 100,
-            experience: d.experience || '5 Years',
-            email: d.email || `${d.name.toLowerCase().replace(/\s+/g, '')}@transitops.com`
-          }));
+          const rawDrivers = Array.isArray(res.data.data) ? res.data.data : (res.data.data?.drivers || []);
+          const mapped = rawDrivers.map(d => {
+            const dName = d.name || (d.user ? `${d.user.firstName} ${d.user.lastName}` : 'Unknown');
+            return {
+              ...d,
+              name: dName,
+              id: d.id || (d._id ? d._id.substring(d._id.length - 6) : ''),
+              rating: d.rating || 4.8,
+              trips: d.trips || Math.floor(Math.random() * 200) + 100,
+              experience: d.experience || '5 Years',
+              email: d.email || (d.user?.email || `${dName.toLowerCase().replace(/\s+/g, '')}@transitops.com`)
+            };
+          });
           setDrivers(mapped);
         }
       } catch (err) {
-        console.warn('Backend server offline. Retaining high-fidelity local drivers directory.');
+        console.warn('Backend server offline. Retaining local cache.');
       }
     };
     loadDrivers();
@@ -71,10 +69,14 @@ export default function Drivers() {
 
   const filteredDrivers = useMemo(() => {
     return drivers.filter((d) => {
-      const matchSearch = d.name.toLowerCase().includes(search.toLowerCase()) || 
-                          d.email.toLowerCase().includes(search.toLowerCase()) ||
-                          d.id.toLowerCase().includes(search.toLowerCase()) ||
-                          d.licenseNumber.toLowerCase().includes(search.toLowerCase());
+      const dName = d.name || '';
+      const dEmail = d.email || '';
+      const dId = d.id || '';
+      const dLicense = d.licenseNumber || '';
+      const matchSearch = dName.toLowerCase().includes(search.toLowerCase()) || 
+                          dEmail.toLowerCase().includes(search.toLowerCase()) ||
+                          dId.toLowerCase().includes(search.toLowerCase()) ||
+                          dLicense.toLowerCase().includes(search.toLowerCase());
       
       const matchStatus = statusFilter === 'All' || d.status === statusFilter;
       

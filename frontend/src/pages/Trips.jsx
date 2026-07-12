@@ -23,93 +23,9 @@ import { toast } from 'react-hot-toast';
 import api from '../services/api';
 
 export default function Trips() {
-  const [trips, setTrips] = useState([
-    {
-      id: 'TRK-204',
-      cargoWeight: 24000,
-      revenue: 2800,
-      driver: 'Marcus Vance',
-      vehicle: 'VH-101 (Volvo FH16)',
-      fuelConsumed: 32,
-      status: 'Dispatched',
-      source: 'New York City (NY)',
-      destination: 'Washington D.C. (WDC)',
-      plannedDistance: 240,
-      actualDistance: 180,
-      startOdometer: 42000,
-      endOdometer: 42240,
-      eta: '2:45 PM (On Time)',
-      progress: 75,
-      stops: [
-        { name: 'NYC Hub (Departure)', time: '08:00 AM', status: 'Completed' },
-        { name: 'Philadelphia I-95 Stop', time: '11:15 AM', status: 'Completed' },
-        { name: 'Baltimore Terminal', time: '01:30 PM', status: 'Active' },
-        { name: 'Washington Terminal (Arrival)', time: '02:45 PM', status: 'Pending' }
-      ],
-      logs: [
-        { text: 'Departed NYC Hub terminal on schedule.', time: '08:00 AM' },
-        { text: 'Cargo checklist validation cleared.', time: '09:15 AM' },
-        { text: 'Arrived at Philadelphia checking stop.', time: '11:15 AM' },
-        { text: 'Bypassed toll gate, auto-billed via TransitRFID.', time: '12:10 PM' }
-      ]
-    },
-    {
-      id: 'TRK-109',
-      cargoWeight: 6000,
-      revenue: 1200,
-      driver: 'Carlos Ruiz',
-      vehicle: 'VH-105 (Isuzu NPR)',
-      fuelConsumed: 26,
-      status: 'Cancelled',
-      source: 'Boston (MA)',
-      destination: 'Newark (NJ)',
-      plannedDistance: 220,
-      actualDistance: 120,
-      startOdometer: 31000,
-      endOdometer: 31220,
-      eta: 'Route Cancelled (Road Hazard)',
-      progress: 55,
-      stops: [
-        { name: 'Boston Warehouse (Departure)', time: '09:30 AM', status: 'Completed' },
-        { name: 'Worcester Stop', time: '11:00 AM', status: 'Completed' },
-        { name: 'Providence Crossing', time: '01:45 PM', status: 'Active' },
-        { name: 'Newark Terminal (Arrival)', time: '04:15 PM', status: 'Pending' }
-      ],
-      logs: [
-        { text: 'Manifest uploaded and driver dispatched.', time: '09:30 AM' },
-        { text: 'Slowdown alert: Congestion near Worcester I-90.', time: '11:10 AM' },
-        { text: 'Driver reported severe highway safety issues; route cancelled.', time: '01:00 PM' }
-      ]
-    },
-    {
-      id: 'TRK-302',
-      cargoWeight: 18000,
-      revenue: 3500,
-      driver: 'Sarah Jenkins',
-      vehicle: 'VH-102 (Peterbilt 579)',
-      fuelConsumed: 0,
-      status: 'Draft',
-      source: 'Richmond (VA)',
-      destination: 'Philadelphia (PA)',
-      plannedDistance: 260,
-      actualDistance: 0,
-      startOdometer: 58000,
-      endOdometer: 58260,
-      eta: 'Awaiting Departure',
-      progress: 5,
-      stops: [
-        { name: 'Richmond Depot (Departure)', time: 'Pending', status: 'Active' },
-        { name: 'Washington Ring Road Stop', time: 'Pending', status: 'Pending' },
-        { name: 'Philadelphia Terminal (Arrival)', time: 'Pending', status: 'Pending' }
-      ],
-      logs: [
-        { text: 'Cargo loading manifest finalized.', time: 'Yesterday' },
-        { text: 'Vehicle assigned and safety logs cleared.', time: '08:00 AM' }
-      ]
-    }
-  ]);
+  const [trips, setTrips] = useState([]);
 
-  const [activeTripId, setActiveTripId] = useState('TRK-204');
+  const [activeTripId, setActiveTripId] = useState('');
   const [dispatchMode, setDispatchMode] = useState(false);
 
   // Backend refs for dropdowns
@@ -139,35 +55,43 @@ export default function Trips() {
           api.get('/api/drivers')
         ]);
 
-        if (tripsRes.data?.success && tripsRes.data.data.length > 0) {
-          const mapped = tripsRes.data.data.map(t => ({
-            ...t,
-            id: t.id || t._id,
-            driver: t.driver?.name || t.driver || 'Unassigned',
-            vehicle: t.vehicle?.vehicleName || t.vehicle?.registrationNumber || t.vehicle || 'Unassigned',
-            stops: t.stops || [
-              { name: `${t.source} Terminal`, time: 'Dispatched', status: 'Active' },
-              { name: `${t.destination} Terminal`, time: 'Pending', status: 'Pending' }
-            ],
-            logs: t.logs || [{ text: 'Trip record loaded from database.', time: 'System' }],
-            progress: t.progress || (t.status === 'Completed' ? 100 : t.status === 'Dispatched' ? 50 : 0),
-            eta: t.eta || 'Scheduled'
-          }));
-          setTrips(mapped);
-          setActiveTripId(mapped[0]?.id);
+        if (tripsRes.data?.success) {
+          const rawTrips = Array.isArray(tripsRes.data.data) ? tripsRes.data.data : (tripsRes.data.data?.trips || []);
+          if (rawTrips.length > 0) {
+            const mapped = rawTrips.map(t => ({
+              ...t,
+              id: t.id || t._id,
+              driver: t.driver?.user ? `${t.driver.user.firstName} ${t.driver.user.lastName}` : (t.driver?.name || t.driver || 'Unassigned'),
+              vehicle: t.vehicle?.vehicleName || t.vehicle?.registrationNumber || t.vehicle || 'Unassigned',
+              stops: t.stops || [
+                { name: `${t.source} Terminal`, time: 'Dispatched', status: 'Active' },
+                { name: `${t.destination} Terminal`, time: 'Pending', status: 'Pending' }
+              ],
+              logs: t.logs || [{ text: 'Trip record loaded from database.', time: 'System' }],
+              progress: t.progress || (t.status === 'Completed' ? 100 : t.status === 'Dispatched' ? 50 : 0),
+              eta: t.eta || 'Scheduled'
+            }));
+            setTrips(mapped);
+            setActiveTripId(mapped[0]?.id);
+          } else {
+            setTrips([]);
+            setActiveTripId('');
+          }
         }
 
         if (vehiclesRes.data?.success) {
-          setAvailableVehicles(vehiclesRes.data.data.map(v => ({
+          const rawVehicles = Array.isArray(vehiclesRes.data.data) ? vehiclesRes.data.data : (vehiclesRes.data.data?.vehicles || []);
+          setAvailableVehicles(rawVehicles.map(v => ({
             _id: v._id,
             label: `${v.vehicleName} (${v.registrationNumber})`
           })));
         }
 
         if (driversRes.data?.success) {
-          setAvailableDrivers(driversRes.data.data.map(d => ({
+          const rawDrivers = Array.isArray(driversRes.data.data) ? driversRes.data.data : (driversRes.data.data?.drivers || []);
+          setAvailableDrivers(rawDrivers.map(d => ({
             _id: d._id,
-            label: d.name
+            label: d.name || (d.user ? `${d.user.firstName} ${d.user.lastName}` : 'Unknown')
           })));
         }
       } catch (err) {
@@ -499,6 +423,11 @@ export default function Trips() {
                   </div>
                 </form>
               </motion.div>
+            ) : !activeTrip ? (
+              <div className="bg-card-bg border border-border-custom rounded-[20px] p-8 text-center text-txt-secondary text-xs">
+                <Compass className="w-8 h-8 text-brand-primary/40 mx-auto mb-3 animate-spin-slow" />
+                No active dispatch manifests. Click "Create Dispatch" to schedule a trip.
+              </div>
             ) : (
               <motion.div
                 key="trip-details"
@@ -595,98 +524,107 @@ export default function Trips() {
         </div>
 
         <div className="lg:col-span-5 space-y-6">
-          <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-3.5">
-              Route Manifest Status
-            </h4>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="w-4 h-4 text-brand-primary shrink-0" />
-                  <span className="text-xs font-bold text-txt-primary truncate max-w-[120px]">{activeTrip.source}</span>
-                </div>
-                <ArrowRight className="w-4 h-4 text-txt-muted shrink-0" />
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="w-4 h-4 text-brand-teal shrink-0" />
-                  <span className="text-xs font-bold text-txt-primary truncate max-w-[120px]">{activeTrip.destination}</span>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-[9px] font-bold text-txt-muted mb-1">
-                  <span>DISPATCH COMPLETED PROGRESS</span>
-                  <span>{activeTrip.progress}%</span>
-                </div>
-                <div className="w-full bg-surface dark:bg-card-elevated h-2 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-brand-primary rounded-full transition-all duration-500"
-                    style={{ width: `${activeTrip.progress}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
-                <div>
-                  <span className="text-[9px] text-txt-muted uppercase font-bold block">Planned Distance</span>
-                  <span className="text-txt-primary">{activeTrip.plannedDistance} mi</span>
-                </div>
-                <div>
-                  <span className="text-[9px] text-txt-muted uppercase font-bold block">Telemetry ETA</span>
-                  <span className="text-brand-primary">{activeTrip.eta}</span>
-                </div>
-              </div>
-
-              <div className="p-3 bg-surface/50 dark:bg-card-elevated rounded-xl border border-border-custom/50 relative overflow-hidden flex flex-col justify-between h-24">
-                <span className="text-[8px] font-bold text-txt-muted uppercase block">Route Pipeline Preview</span>
-                
-                <div className="relative h-10 flex items-center justify-between px-6">
-                  <div className="absolute left-6 right-6 h-0.5 border-t border-dashed border-txt-muted/30" />
-                  <div 
-                    className="absolute left-6 h-0.5 bg-brand-primary" 
-                    style={{ width: `calc(${activeTrip.progress}% - 3rem)` }}
-                  />
-                  
-                  <div className="w-2.5 h-2.5 rounded-full bg-brand-primary ring-4 ring-brand-primary/10 relative z-10" />
-                  
-                  <div 
-                    className="absolute z-20 top-[11px] -translate-x-1/2 flex flex-col items-center"
-                    style={{ left: `calc(1.5rem + ${activeTrip.progress}% * 0.7)` }}
-                  >
-                    <Truck className="w-4 h-4 text-brand-primary animate-pulse" />
-                  </div>
-
-                  <div className="w-2.5 h-2.5 rounded-full bg-brand-teal ring-4 ring-brand-teal/10 relative z-10" />
-                </div>
-
-                <div className="flex justify-between text-[8px] text-txt-muted font-bold font-mono px-2">
-                  <span>DEP: {activeTrip.source.split(' ')[0]}</span>
-                  <span>ARR: {activeTrip.destination.split(' ')[0]}</span>
-                </div>
-              </div>
-
+          {!activeTrip ? (
+            <div className="bg-card-bg border border-border-custom rounded-[20px] p-6 text-center text-txt-secondary text-xs shadow-premium flex flex-col items-center justify-center min-h-[200px]">
+              <Compass className="w-8 h-8 text-brand-primary/30 mb-2" />
+              Awaiting active dispatch to view route pipeline & manifest activity log feed.
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-3.5">
+                  Route Manifest Status
+                </h4>
 
-          <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-4">
-              Real-time Manifest Activity Feed
-            </h4>
-
-            <div className="space-y-4">
-              {activeTrip.logs.map((log, index) => (
-                <div key={index} className="flex gap-3">
-                  <div className="h-6 w-6 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0">
-                    <FileText className="w-3 h-3" />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-brand-primary shrink-0" />
+                      <span className="text-xs font-bold text-txt-primary truncate max-w-[120px]">{activeTrip.source}</span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-txt-muted shrink-0" />
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-brand-teal shrink-0" />
+                      <span className="text-xs font-bold text-txt-primary truncate max-w-[120px]">{activeTrip.destination}</span>
+                    </div>
                   </div>
+
                   <div>
-                    <p className="text-xs text-txt-primary leading-tight font-medium">{log.text}</p>
-                    <span className="text-[9px] text-txt-muted block mt-0.5">{log.time}</span>
+                    <div className="flex justify-between text-[9px] font-bold text-txt-muted mb-1">
+                      <span>DISPATCH COMPLETED PROGRESS</span>
+                      <span>{activeTrip.progress}%</span>
+                    </div>
+                    <div className="w-full bg-surface dark:bg-card-elevated h-2 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-brand-primary rounded-full transition-all duration-500"
+                        style={{ width: `${activeTrip.progress}%` }}
+                      />
+                    </div>
                   </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-xs font-semibold">
+                    <div>
+                      <span className="text-[9px] text-txt-muted uppercase font-bold block">Planned Distance</span>
+                      <span className="text-txt-primary">{activeTrip.plannedDistance} mi</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-txt-muted uppercase font-bold block">Telemetry ETA</span>
+                      <span className="text-brand-primary">{activeTrip.eta}</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-surface/50 dark:bg-card-elevated rounded-xl border border-border-custom/50 relative overflow-hidden flex flex-col justify-between h-24">
+                    <span className="text-[8px] font-bold text-txt-muted uppercase block">Route Pipeline Preview</span>
+                    
+                    <div className="relative h-10 flex items-center justify-between px-6">
+                      <div className="absolute left-6 right-6 h-0.5 border-t border-dashed border-txt-muted/30" />
+                      <div 
+                        className="absolute left-6 h-0.5 bg-brand-primary" 
+                        style={{ width: `calc(${activeTrip.progress}% - 3rem)` }}
+                      />
+                      
+                      <div className="w-2.5 h-2.5 rounded-full bg-brand-primary ring-4 ring-brand-primary/10 relative z-10" />
+                      
+                      <div 
+                        className="absolute z-20 top-[11px] -translate-x-1/2 flex flex-col items-center"
+                        style={{ left: `calc(1.5rem + ${activeTrip.progress}% * 0.7)` }}
+                      >
+                        <Truck className="w-4 h-4 text-brand-primary animate-pulse" />
+                      </div>
+
+                      <div className="w-2.5 h-2.5 rounded-full bg-brand-teal ring-4 ring-brand-teal/10 relative z-10" />
+                    </div>
+
+                    <div className="flex justify-between text-[8px] text-txt-muted font-bold font-mono px-2">
+                      <span>DEP: {activeTrip.source.split(' ')[0]}</span>
+                      <span>ARR: {activeTrip.destination.split(' ')[0]}</span>
+                    </div>
+                  </div>
+
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+
+              <div className="bg-card-bg border border-border-custom rounded-[20px] p-5 shadow-premium">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-border-custom/50 pb-2.5 mb-4">
+                  Real-time Manifest Activity Feed
+                </h4>
+
+                <div className="space-y-4">
+                  {(activeTrip.logs || []).map((log, index) => (
+                    <div key={index} className="flex gap-3">
+                      <div className="h-6 w-6 rounded-full bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0">
+                        <FileText className="w-3 h-3" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-txt-primary leading-tight font-medium">{log.text}</p>
+                        <span className="text-[9px] text-txt-muted block mt-0.5">{log.time}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
         </div>
 

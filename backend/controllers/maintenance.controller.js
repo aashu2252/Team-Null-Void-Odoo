@@ -52,10 +52,12 @@ const createMaintenanceRecord = async (req, res) => {
       status
     });
 
+    const populatedRecord = await MaintenanceLog.findById(maintenanceLog._id).populate('vehicle');
+
     return res.status(201).json({
       success: true,
       message: 'Maintenance record created successfully',
-      data: maintenanceLog
+      data: populatedRecord
     });
   } catch (error) {
     return res.status(500).json({
@@ -218,11 +220,12 @@ const updateMaintenanceRecord = async (req, res) => {
     if (status !== undefined) maintenanceRecord.status = status;
 
     const updatedRecord = await maintenanceRecord.save();
+    const populatedRecord = await MaintenanceLog.findById(updatedRecord._id).populate('vehicle');
 
     return res.status(200).json({
       success: true,
       message: 'Maintenance record updated successfully',
-      data: updatedRecord
+      data: populatedRecord
     });
   } catch (error) {
     return res.status(500).json({

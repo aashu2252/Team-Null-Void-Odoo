@@ -64,10 +64,12 @@ const createFuelLog = async (req, res) => {
       date
     });
 
+    const populatedLog = await FuelLog.findById(fuelLog._id).populate('vehicle').populate('trip');
+
     return res.status(201).json({
       success: true,
       message: 'Fuel log created successfully',
-      data: fuelLog
+      data: populatedLog
     });
   } catch (error) {
     return res.status(500).json({
@@ -252,10 +254,12 @@ const updateFuelLog = async (req, res) => {
 
     const updatedFuelLog = await fuelLog.save();
 
+    const populatedLog = await FuelLog.findById(updatedFuelLog._id).populate('vehicle').populate('trip');
+
     return res.status(200).json({
       success: true,
       message: 'Fuel log updated successfully',
-      data: updatedFuelLog
+      data: populatedLog
     });
   } catch (error) {
     return res.status(500).json({

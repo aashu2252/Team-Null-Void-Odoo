@@ -82,10 +82,14 @@ const createTrip = async (req, res) => {
       completionDate
     });
 
+    const populatedTrip = await Trip.findById(trip._id)
+      .populate('vehicle')
+      .populate({ path: 'driver', populate: { path: 'user', select: 'firstName lastName email' } });
+
     return res.status(201).json({
       success: true,
       message: 'Trip created successfully',
-      data: trip
+      data: populatedTrip
     });
   } catch (error) {
     return res.status(500).json({
@@ -139,7 +143,7 @@ const getAllTrips = async (req, res) => {
     const total = await Trip.countDocuments(query);
     const trips = await Trip.find(query)
       .populate('vehicle')
-      .populate('driver')
+      .populate({ path: 'driver', populate: { path: 'user', select: 'firstName lastName email' } })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -180,7 +184,9 @@ const getTripById = async (req, res) => {
       });
     }
 
-    const trip = await Trip.findById(id).populate('vehicle').populate('driver');
+    const trip = await Trip.findById(id)
+      .populate('vehicle')
+      .populate({ path: 'driver', populate: { path: 'user', select: 'firstName lastName email' } });
     if (!trip) {
       return res.status(404).json({
         success: false,
@@ -292,11 +298,14 @@ const updateTrip = async (req, res) => {
     if (completionDate !== undefined) trip.completionDate = completionDate;
 
     const updatedTrip = await trip.save();
+    const populatedTrip = await Trip.findById(updatedTrip._id)
+      .populate('vehicle')
+      .populate({ path: 'driver', populate: { path: 'user', select: 'firstName lastName email' } });
 
     return res.status(200).json({
       success: true,
       message: 'Trip updated successfully',
-      data: updatedTrip
+      data: populatedTrip
     });
   } catch (error) {
     return res.status(500).json({

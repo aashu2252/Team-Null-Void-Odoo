@@ -21,14 +21,7 @@ import { toast } from 'react-hot-toast';
 import api from '../services/api';
 
 export default function Vehicles() {
-  const [vehicles, setVehicles] = useState([
-    { vehicleName: 'VH-101', model: 'Volvo FH16 (Heavy)', registrationNumber: 'NJ-847-XYZ', type: 'Heavy Duty', driver: 'Marcus Vance', maxLoadCapacity: 24000, region: 'East Coast', odometer: 42000, acquisitionCost: 120000, status: 'On Trip', fuel: 72, health: 94 },
-    { vehicleName: 'VH-102', model: 'Peterbilt 579 (Semi)', registrationNumber: 'NY-204-ABC', type: 'Heavy Duty', driver: 'Sarah Jenkins', maxLoadCapacity: 22000, region: 'East Coast', odometer: 58000, acquisitionCost: 135000, status: 'On Trip', fuel: 48, health: 87 },
-    { vehicleName: 'VH-103', model: 'Ford F-550 (Flatbed)', registrationNumber: 'PA-912-LMN', type: 'Flatbed', driver: 'David Miller', maxLoadCapacity: 8000, region: 'Northeast', odometer: 12500, acquisitionCost: 65000, status: 'Available', fuel: 95, health: 99 },
-    { vehicleName: 'VH-104', model: 'Hino 268 (Box Truck)', registrationNumber: 'NJ-502-QWE', type: 'Box Truck', driver: 'Bypass Lead', maxLoadCapacity: 10000, region: 'Mid-Atlantic', odometer: 89000, acquisitionCost: 75000, status: 'In Shop', fuel: 10, health: 64 },
-    { vehicleName: 'VH-105', model: 'Isuzu NPR (Refrigerated)', registrationNumber: 'TX-441-TYU', type: 'Refrigerated', driver: 'Carlos Ruiz', maxLoadCapacity: 6000, region: 'Southwest', odometer: 31000, acquisitionCost: 82000, status: 'On Trip', fuel: 81, health: 92 },
-    { vehicleName: 'VH-106', model: 'Freightliner M2', registrationNumber: 'CA-889-OPQ', type: 'Box Truck', driver: 'Amanda Ross', maxLoadCapacity: 12000, region: 'West Coast', odometer: 145000, acquisitionCost: 95000, status: 'Retired', fuel: 0, health: 45 }
-  ]);
+  const [vehicles, setVehicles] = useState([]);
 
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
@@ -55,7 +48,8 @@ export default function Vehicles() {
       try {
         const res = await api.get('/api/vehicles');
         if (res.data && res.data.success) {
-          const mapped = res.data.data.map(v => ({
+          const rawVehicles = Array.isArray(res.data.data) ? res.data.data : (res.data.data?.vehicles || []);
+          const mapped = rawVehicles.map(v => ({
             ...v,
             fuel: v.fuel || Math.floor(Math.random() * 40) + 60,
             health: v.health || Math.floor(Math.random() * 15) + 85,
@@ -64,7 +58,7 @@ export default function Vehicles() {
           setVehicles(mapped);
         }
       } catch (err) {
-        console.warn('Backend server offline. Using pre-configured local vehicle registry.');
+        console.warn('Backend server offline. Retaining local cache.');
       }
     };
     loadVehicles();
@@ -72,10 +66,10 @@ export default function Vehicles() {
 
   const filteredVehicles = useMemo(() => {
     return vehicles.filter(v => {
-      const matchSearch = v.vehicleName.toLowerCase().includes(search.toLowerCase()) || 
-                          v.model.toLowerCase().includes(search.toLowerCase()) ||
-                          v.driver.toLowerCase().includes(search.toLowerCase()) ||
-                          v.registrationNumber.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = (v.vehicleName || '').toLowerCase().includes(search.toLowerCase()) || 
+                          (v.model || '').toLowerCase().includes(search.toLowerCase()) ||
+                          (v.driver || 'Unassigned').toLowerCase().includes(search.toLowerCase()) ||
+                          (v.registrationNumber || '').toLowerCase().includes(search.toLowerCase());
       
       const matchType = typeFilter === 'All' || v.type === typeFilter;
       const matchStatus = statusFilter === 'All' || v.status === statusFilter;
