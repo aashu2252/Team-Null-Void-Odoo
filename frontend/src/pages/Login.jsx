@@ -15,7 +15,7 @@ const LoginSchema = z.object({
   password: z.string({
     required_error: 'Password is required'
   }).min(6, 'Password is too short'),
-  role: z.enum(['Dispatcher', 'Fleet Manager', 'Safety Officer', 'Financial Analyst'], {
+  role: z.enum(['Super Admin', 'Dispatcher', 'Fleet Manager', 'Safety Officer', 'Financial Analyst'], {
     required_error: 'Operator role is required'
   })
 });
@@ -28,47 +28,20 @@ export default function Login() {
 
   const handleLoginSubmit = async (values, { setSubmitting }) => {
     try {
-      let token = 'demo-token';
-      let user = { fullName: 'Alex Mercer', role: values.role };
+      const response = await api.post('/api/auth/login', {
+        email: values.email,
+        password: values.password
+      });
 
-      try {
-        const response = await api.post('/api/auth/login', {
-          email: values.email,
-          password: values.password
+      if (!response.data?.success) {
+        toast.error(response.data?.message || 'Login failed. Please try again.', {
+          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
         });
-        token = response.data.data.token;
-        user = response.data.data.user;
-
-        // Validate returned role matches the selected role
-        const userRoleName = (user.role && typeof user.role === 'object') ? user.role.name : user.role;
-        if (userRoleName !== values.role) {
-          toast.error(`Unauthorized access. Authenticated user does not possess the requested '${values.role}' role.`, {
-            style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-          });
-          return;
-        }
-      } catch (err) {
-        if (err.response) {
-          // Server responded with an error (4xx/5xx) — show the server's own message
-          const serverMessage = err.response.data?.message || 'Invalid credentials. Please try again.';
-          toast.error(serverMessage, {
-            style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-          });
-          return;
-        } else if (err.code === 'ECONNREFUSED' || err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
-          console.warn('Backend server offline. Falling back to local offline mock bypass...');
-          toast.success(`Demo Offline Mode: Auto-authenticating as ${values.role}`, {
-            duration: 4000,
-            style: { background: '#182230', color: '#4ADE80', border: '1px solid #2B3645' }
-          });
-        } else {
-          // Timeout or unknown
-          toast.error(err.message || 'An unexpected error occurred. Please try again.', {
-            style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-          });
-          return;
-        }
+        return;
       }
+
+      const token = response.data.data.token;
+      const user = response.data.data.user;
 
       login(token, user);
 
@@ -78,9 +51,20 @@ export default function Login() {
 
       navigate('/dashboard');
     } catch (error) {
-      toast.error(error.message || 'An unexpected error occurred. Please try again.', {
-        style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
-      });
+      if (error.response) {
+        const serverMessage = error.response.data?.message || 'Invalid credentials. Please try again.';
+        toast.error(serverMessage, {
+          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+        });
+      } else if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+        toast.error('Cannot connect to server. Make sure backend is running on port 5000.', {
+          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+        });
+      } else {
+        toast.error(error.message || 'An unexpected error occurred. Please try again.', {
+          style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
+        });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -178,7 +162,7 @@ export default function Login() {
           </div>
 
           <Formik
-            initialValues={{ email: '', password: '', role: 'Dispatcher' }}
+            initialValues={{ email: '', password: '', role: 'Super Admin' }}
             validate={validateWithZod(LoginSchema)}
             onSubmit={handleLoginSubmit}
           >
@@ -196,6 +180,7 @@ export default function Login() {
                       name="role"
                       className="block w-full rounded-xl bg-card-bg border border-border-custom text-txt-primary px-10 py-2.5 text-xs focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary cursor-pointer"
                     >
+                      <option value="Super Admin">Super Admin</option>
                       <option value="Dispatcher">Dispatcher</option>
                       <option value="Fleet Manager">Fleet Manager</option>
                       <option value="Safety Officer">Safety Officer</option>

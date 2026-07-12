@@ -1,12 +1,9 @@
 const { z } = require('zod');
 
 const registerSchema = z.object({
-  firstName: z.string({
-    required_error: 'First name is required'
-  }).trim().min(1, 'First name cannot be empty'),
-  lastName: z.string({
-    required_error: 'Last name is required'
-  }).trim().min(1, 'Last name cannot be empty'),
+  firstName: z.string().trim().min(1, 'First name cannot be empty').optional(),
+  lastName: z.string().trim().min(1, 'Last name cannot be empty').optional(),
+  fullName: z.string().trim().min(1, 'Full name cannot be empty').optional(),
   email: z.string({
     required_error: 'Email is required'
   }).trim().email('Invalid email address'),
@@ -17,6 +14,9 @@ const registerSchema = z.object({
   mobile: z.string().optional(),
   address: z.string().optional(),
   isActive: z.boolean().optional()
+}).refine((data) => data.firstName || data.lastName || data.fullName, {
+  message: 'Name is required',
+  path: ['fullName']
 });
 
 const loginSchema = z.object({

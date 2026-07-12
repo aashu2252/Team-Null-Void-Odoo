@@ -35,6 +35,7 @@ import {
 } from 'recharts';
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const getRoleGreeting = (role) => {
     switch (role) {
       case 'Dispatcher':

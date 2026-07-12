@@ -48,8 +48,10 @@ const seedAdmin = async () => {
       });
       console.log(`Admin user created successfully! Email: ${adminEmail}, Password: Password123!`);
     } else {
-      console.log(`Admin user (${adminEmail}) already exists. Ensuring role is Super Admin...`);
+      console.log(`Admin user (${adminEmail}) already exists. Ensuring role is Super Admin and password is reset...`);
       adminUser.role = superAdminRole._id;
+      adminUser.isActive = true;
+      adminUser.password = 'Password123!';
       await adminUser.save();
       console.log('Admin user updated');
     }
