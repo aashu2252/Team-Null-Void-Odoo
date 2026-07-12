@@ -30,15 +30,15 @@ export default function Login() {
 
   const handleLoginSubmit = async (values, { setSubmitting }) => {
     try {
-      const payload = { 
-        email: values.email, 
+      const payload = {
+        email: values.email,
         password: values.password,
         role: values.role
       };
 
       let token = 'demo-token';
       let user = { fullName: 'Alex Mercer', role: values.role };
-      
+
       try {
         const response = await api.post('/api/auth/login', payload);
         token = response.data.data.token;
@@ -52,7 +52,7 @@ export default function Login() {
       }
 
       login(token, user);
-      
+
       toast.success('Access Granted. Welcome back to TransitOps!', {
         style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
       });
@@ -78,7 +78,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-bg-app flex overflow-hidden transition-colors duration-300">
-      
+
       {/* LEFT PANEL: Blue-Teal Gradient Visual Layout */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-tr from-brand-primary to-brand-teal relative overflow-hidden flex-col justify-between p-12">
         <div className="absolute inset-0 opacity-15 mix-blend-overlay">
@@ -186,7 +186,7 @@ export default function Login() {
           >
             {({ errors, touched, isSubmitting, values }) => (
               <Form className="space-y-4">
-                
+
                 {/* Role Selection */}
                 <div>
                   <label htmlFor="role" className="block text-[10px] font-bold uppercase tracking-wider text-txt-secondary mb-1.5">
@@ -218,9 +218,8 @@ export default function Login() {
                       id="email"
                       name="email"
                       type="email"
-                      className={`block w-full rounded-xl bg-card-bg border ${
-                        errors.email && touched.email ? 'border-brand-danger' : 'border-border-custom focus:border-brand-primary'
-                      } text-txt-primary px-10 py-2.5 text-xs placeholder-txt-muted focus:outline-none focus:ring-1 focus:ring-brand-primary transition-all duration-200`}
+                      className={`block w-full rounded-xl bg-card-bg border ${errors.email && touched.email ? 'border-brand-danger' : 'border-border-custom focus:border-brand-primary'
+                        } text-txt-primary px-10 py-2.5 text-xs placeholder-txt-muted focus:outline-none focus:ring-1 focus:ring-brand-primary transition-all duration-200`}
                       placeholder="manager@transitops.com"
                     />
                     <Mail className="absolute left-3 top-3 w-4 h-4 text-txt-muted" />
@@ -249,9 +248,8 @@ export default function Login() {
                       id="password"
                       name="password"
                       type={showPassword ? 'text' : 'password'}
-                      className={`block w-full rounded-xl bg-card-bg border ${
-                        errors.password && touched.password ? 'border-brand-danger' : 'border-border-custom focus:border-brand-primary'
-                      } text-txt-primary px-10 py-2.5 text-xs placeholder-txt-muted focus:outline-none focus:ring-1 focus:ring-brand-primary transition-all duration-200`}
+                      className={`block w-full rounded-xl bg-card-bg border ${errors.password && touched.password ? 'border-brand-danger' : 'border-border-custom focus:border-brand-primary'
+                        } text-txt-primary px-10 py-2.5 text-xs placeholder-txt-muted focus:outline-none focus:ring-1 focus:ring-brand-primary transition-all duration-200`}
                       placeholder="••••••••"
                     />
                     <Lock className="absolute left-3 top-3 w-4 h-4 text-txt-muted" />
@@ -299,14 +297,6 @@ export default function Login() {
                     ) : (
                       'Sign In'
                     )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => triggerGuestBypass(values.role)}
-                    className="w-full py-2 px-4 bg-surface hover:bg-surface/80 border border-border-custom text-txt-primary rounded-xl text-xs font-semibold transition-colors cursor-pointer"
-                  >
-                    Quick Guest Demo Bypass
                   </button>
                 </div>
               </Form>

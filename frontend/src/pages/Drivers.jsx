@@ -44,12 +44,12 @@ export default function Drivers() {
 
   const filteredDrivers = useMemo(() => {
     return drivers.filter((d) => {
-      const matchSearch = d.name.toLowerCase().includes(search.toLowerCase()) || 
-                          d.email.toLowerCase().includes(search.toLowerCase()) ||
-                          d.id.toLowerCase().includes(search.toLowerCase());
-      
+      const matchSearch = d.name.toLowerCase().includes(search.toLowerCase()) ||
+        d.email.toLowerCase().includes(search.toLowerCase()) ||
+        d.id.toLowerCase().includes(search.toLowerCase());
+
       const matchStatus = statusFilter === 'All' || d.status === statusFilter;
-      
+
       return matchSearch && matchStatus;
     });
   }, [drivers, search, statusFilter]);
@@ -72,11 +72,11 @@ export default function Drivers() {
         trips: parseInt(newDriver.trips) || 0
       }
     ]);
-    
-    toast.success(`Driver Profile for ${newDriver.name} created!`, {
+
+    toast.success(`Dispatcher Profile for ${newDriver.name} created!`, {
       style: { background: '#182230', color: '#F8FAFC', border: '1px solid #2B3645' }
     });
-    
+
     setNewDriver({
       name: '',
       experience: '',
@@ -127,7 +127,7 @@ export default function Drivers() {
           <h2 className="text-xl font-bold text-txt-primary">Driver Profiles</h2>
           <p className="text-xs text-txt-secondary mt-0.5">Manage operator rosters, Star ratings, safety performance compliance records.</p>
         </div>
-        
+
         <button
           onClick={() => setShowAddModal(true)}
           className="flex items-center gap-1.5 px-3.5 py-2 bg-brand-primary hover:bg-brand-primary/95 text-white rounded-xl text-xs font-semibold shadow-md shadow-brand-primary/10 transition-all cursor-pointer"
@@ -223,15 +223,14 @@ export default function Drivers() {
                     <span>{driver.safetyScore}/100</span>
                   </div>
                   <div className="w-full bg-surface dark:bg-card-elevated h-2 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full ${
-                        driver.safetyScore >= 95 ? 'bg-brand-success' : driver.safetyScore >= 85 ? 'bg-brand-orange' : 'bg-brand-danger'
-                      }`}
+                    <div
+                      className={`h-full rounded-full ${driver.safetyScore >= 95 ? 'bg-brand-success' : driver.safetyScore >= 85 ? 'bg-brand-orange' : 'bg-brand-danger'
+                        }`}
                       style={{ width: `${driver.safetyScore}%` }}
                     />
                   </div>
                 </div>
-                
+
                 <div className="pt-3 border-t border-border-custom/50 flex justify-between gap-2">
                   <a
                     href={`mailto:${driver.email}`}
