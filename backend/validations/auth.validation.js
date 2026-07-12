@@ -1,16 +1,21 @@
 const { z } = require('zod');
 
 const registerSchema = z.object({
-  fullName: z.string({
-    required_error: 'Full name is required'
-  }).trim().min(1, 'Full name cannot be empty'),
+  firstName: z.string({
+    required_error: 'First name is required'
+  }).trim().min(1, 'First name cannot be empty'),
+  lastName: z.string({
+    required_error: 'Last name is required'
+  }).trim().min(1, 'Last name cannot be empty'),
   email: z.string({
     required_error: 'Email is required'
   }).trim().email('Invalid email address'),
   password: z.string({
     required_error: 'Password is required'
   }).min(8, 'Password must be at least 8 characters long'),
-  role: z.enum(['Fleet Manager', 'Dispatcher', 'Safety Officer', 'Financial Analyst']).optional(),
+  role: z.string().optional(),
+  mobile: z.string().optional(),
+  address: z.string().optional(),
   isActive: z.boolean().optional()
 });
 

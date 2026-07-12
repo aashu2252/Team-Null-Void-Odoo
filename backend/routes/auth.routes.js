@@ -3,7 +3,7 @@ const router = express.Router();
 const { register, login } = require('../controllers/auth.controller');
 const validate = require('../middleware/validate.middleware');
 const { registerSchema, loginSchema } = require('../validations/auth.validation');
-const protect = require('../middleware/auth.middleware');
+const { protect } = require('../middleware/auth.middleware');
 
 /**
  * @swagger

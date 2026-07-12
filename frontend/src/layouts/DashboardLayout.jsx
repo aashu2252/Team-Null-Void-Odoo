@@ -175,11 +175,15 @@ export default function DashboardLayout() {
             {/* User credentials */}
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-cyan-400 text-sm shadow-inner">
-                {user?.fullName ? user.fullName.substring(0, 2).toUpperCase() : 'TO'}
+                {user?.firstName ? user.firstName.substring(0, 1).toUpperCase() + (user.lastName ? user.lastName.substring(0, 1).toUpperCase() : '') : 'TO'}
               </div>
               <div className="hidden sm:block text-left">
-                <p className="text-xs font-semibold text-slate-200">{user?.fullName || 'John Doe'}</p>
-                <p className="text-[10px] text-slate-500 font-mono">{user?.role || 'Dispatcher'}</p>
+                <p className="text-xs font-semibold text-slate-200">
+                  {user?.firstName ? `${user.firstName} ${user.lastName}` : 'John Doe'}
+                </p>
+                <p className="text-[10px] text-slate-500 font-mono">
+                  {user?.role?.name || user?.role || 'Dispatcher'}
+                </p>
               </div>
             </div>
 

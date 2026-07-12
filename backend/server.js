@@ -4,6 +4,8 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 
 const authRoutes = require('./routes/auth.routes');
+const roleRoutes = require('./routes/role.routes');
+const userRoutes = require('./routes/user.routes');
 const errorHandler = require('./middleware/error.middleware');
 const setupSwagger = require('./config/swagger');
 
@@ -21,6 +23,8 @@ setupSwagger(app);
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/roles', roleRoutes);
+app.use('/api/users', userRoutes);
 
 // Root Status Route
 app.get('/api/status', (req, res) => {
