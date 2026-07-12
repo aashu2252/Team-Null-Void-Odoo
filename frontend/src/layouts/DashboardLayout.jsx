@@ -125,8 +125,8 @@ export default function DashboardLayout() {
                   key={itemIdx}
                   to={item.path}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 relative ${isActive
-                      ? 'bg-brand-primary/10 text-brand-primary font-semibold'
-                      : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
+                    ? 'bg-brand-primary/10 text-brand-primary font-semibold'
+                    : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
                     }`}
                   title={collapsed ? item.name : undefined}
                 >
@@ -181,36 +181,6 @@ export default function DashboardLayout() {
             >
               <Menu className="w-5 h-5" />
             </button>
-
-            {/* Org Switcher */}
-            <div className="relative">
-              <button
-                onClick={() => setShowOrgDropdown(!showOrgDropdown)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-surface text-xs font-bold tracking-tight text-txt-primary transition-colors cursor-pointer select-none border border-border-custom/50"
-              >
-                <span>{activeOrg}</span>
-                <ChevronDown className="w-3.5 h-3.5 text-txt-secondary" />
-              </button>
-              {showOrgDropdown && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowOrgDropdown(false)} />
-                  <div className="absolute left-0 mt-2 w-48 bg-card-bg border border-border-custom rounded-xl shadow-xl z-50 py-1.5">
-                    <button
-                      onClick={() => { setActiveOrg('Apex Logistics Inc.'); setShowOrgDropdown(false); }}
-                      className="w-full text-left px-4 py-2 text-xs hover:bg-surface font-semibold"
-                    >
-                      Apex Logistics Inc.
-                    </button>
-                    <button
-                      onClick={() => { setActiveOrg('TransitOps West Coast'); setShowOrgDropdown(false); }}
-                      className="w-full text-left px-4 py-2 text-xs hover:bg-surface font-semibold"
-                    >
-                      TransitOps West Coast
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
 
             <button
               onClick={() => setCollapsed(!collapsed)}
@@ -359,8 +329,8 @@ export default function DashboardLayout() {
                       to={item.path}
                       onClick={() => setMobileMenuOpen(false)}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 ${isActive
-                          ? 'bg-brand-primary/10 text-brand-primary font-semibold'
-                          : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
+                        ? 'bg-brand-primary/10 text-brand-primary font-semibold'
+                        : 'text-txt-secondary hover:bg-surface hover:text-txt-primary'
                         }`}
                     >
                       <IconComponent className={`w-5 h-5 ${isActive ? 'text-brand-primary' : 'text-txt-secondary'}`} />
