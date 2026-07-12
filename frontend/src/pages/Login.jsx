@@ -290,14 +290,7 @@ export default function Login() {
             )}
           </Formik>
 
-          <div className="text-center">
-            <p className="text-xs text-txt-secondary">
-              New to the platform?{' '}
-              <Link to="/register" className="font-bold text-brand-primary hover:underline transition-colors">
-                Register Workspace
-              </Link>
-            </p>
-          </div>
+
         </div>
 
         {/* Footer Support link */}
